@@ -18,12 +18,12 @@ const api = axios.create({
 
 // ── Auth ────────────────────────────────────
 export const authService = {
-  login: async (email: string) => {
-    const res = await api.post('/auth/login', { email });
+  login: async (email: string, password: string) => {
+    const res = await api.post('/auth/login', { email, password });
     return res.data;
   },
-  register: async (email: string, nickname: string, level: string) => {
-    const res = await api.post('/auth/register', { email, nickname, level });
+  register: async (email: string, password: string, nickname: string, level: string) => {
+    const res = await api.post('/auth/register', { email, password, nickname, level });
     return res.data;
   },
   getUsers: async () => {

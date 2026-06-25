@@ -1,7 +1,3 @@
-// ============================================
-// 🔐 Login Screen
-// ============================================
-
 import React, { useState } from 'react';
 import {
   View,
@@ -18,49 +14,68 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 interface LoginScreenProps {
-  onLogin: (email: string) => void;
-  onRegister: (email: string, nickname: string, level: 'beginner' | 'intermediate' | 'advanced') => Promise<void>;
+  onLogin: (email: string, password: string) => Promise<void>;
+  onRegister: (
+    email: string,
+    password: string,
+    nickname: string,
+    level: 'beginner' | 'intermediate' | 'advanced'
+  ) => Promise<void>;
+  onGoogleLogin: () => Promise<void>;
 }
 
-export default function LoginScreen({ onLogin, onRegister }: LoginScreenProps) {
+export default function LoginScreen({ onLogin, onRegister, onGoogleLogin }: LoginScreenProps) {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
   const [level, setLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
-    if (!email.trim()) {
-      Alert.alert('알림', '이메일을 입력해주세요.');
+    if (!email.trim() || !password) {
+      Alert.alert('알림', '이메일과 비밀번호를 입력해주세요.');
       return;
     }
     setLoading(true);
     try {
-      await onLogin(email.trim());
+      await onLogin(email.trim(), password);
     } finally {
       setLoading(false);
     }
   };
 
   const handleRegister = async () => {
-    if (!email.trim() || !nickname.trim()) {
-      Alert.alert('알림', '이메일과 닉네임을 입력해주세요.');
+    if (!email.trim() || !password || !nickname.trim()) {
+      Alert.alert('알림', '이메일, 비밀번호, 닉네임을 모두 입력해주세요.');
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert('알림', '비밀번호는 6자 이상이어야 합니다.');
       return;
     }
     setLoading(true);
     try {
-      await onRegister(email.trim(), nickname.trim(), level);
+      await onRegister(email.trim(), password, nickname.trim(), level);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDemoLogin = () => {
+  const handleGoogleLogin = async () => {
     setLoading(true);
-    setTimeout(() => {
-      onLogin('runner@example.com');
+    try {
+      await onGoogleLogin();
+    } finally {
       setLoading(false);
-    }, 500);
+    }
+  };
+
+  const switchMode = () => {
+    setIsSignUp(!isSignUp);
+    setPassword('');
+    setNickname('');
   };
 
   return (
@@ -70,7 +85,7 @@ export default function LoginScreen({ onLogin, onRegister }: LoginScreenProps) {
         style={styles.keyboardView}
       >
         <View style={styles.content}>
-          {/* Logo Area */}
+          {/* Logo */}
           <View style={styles.logoArea}>
             <View style={styles.logoCircle}>
               <Ionicons name="fitness" size={48} color="#FFFFFF" />
@@ -79,9 +94,8 @@ export default function LoginScreen({ onLogin, onRegister }: LoginScreenProps) {
             <Text style={styles.tagline}>당신의 러닝 파트너</Text>
           </View>
 
-          {/* Input Area */}
           <View style={styles.inputArea}>
-            {/* Email Input */}
+            {/* Email */}
             <View style={styles.inputContainer}>
               <Ionicons name="mail-outline" size={20} color="#8E8EA0" style={styles.inputIcon} />
               <TextInput
@@ -96,7 +110,29 @@ export default function LoginScreen({ onLogin, onRegister }: LoginScreenProps) {
               />
             </View>
 
-            {/* Nickname Input & Level Selector for SignUp */}
+            {/* Password */}
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color="#8E8EA0" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="비밀번호를 입력하세요"
+                placeholderTextColor="#B0B0C0"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color="#8E8EA0"
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* SignUp only: Nickname + Level */}
             {isSignUp && (
               <>
                 <View style={styles.inputContainer}>
@@ -137,7 +173,7 @@ export default function LoginScreen({ onLogin, onRegister }: LoginScreenProps) {
               </>
             )}
 
-            {/* Action Button */}
+            {/* Main Action Button */}
             <TouchableOpacity
               style={[styles.loginButton, loading && styles.loginButtonDisabled]}
               onPress={isSignUp ? handleRegister : handleLogin}
@@ -151,42 +187,31 @@ export default function LoginScreen({ onLogin, onRegister }: LoginScreenProps) {
               )}
             </TouchableOpacity>
 
-            {/* Toggle Mode */}
-            <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} disabled={loading}>
+            {/* Toggle Login/SignUp */}
+            <TouchableOpacity onPress={switchMode} disabled={loading}>
               <Text style={styles.toggleText}>
                 {isSignUp ? '이미 계정이 있으신가요? 로그인' : '계정이 없으신가요? 회원가입'}
               </Text>
             </TouchableOpacity>
 
-            {!isSignUp && (
-              <>
-                <View style={styles.divider}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>또는</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                <TouchableOpacity
-                  style={styles.demoButton}
-                  onPress={handleDemoLogin}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="flash" size={18} color="#5B5FEF" />
-                  <Text style={styles.demoButtonText}>데모 계정으로 시작하기</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-
-          {/* Demo Accounts Info */}
-          {!isSignUp && (
-            <View style={styles.demoInfo}>
-              <Text style={styles.demoInfoTitle}>테스트 계정</Text>
-              <Text style={styles.demoInfoText}>runner@example.com (중급)</Text>
-              <Text style={styles.demoInfoText}>speedy@example.com (고급)</Text>
-              <Text style={styles.demoInfoText}>newbie@example.com (초보)</Text>
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>또는</Text>
+              <View style={styles.dividerLine} />
             </View>
-          )}
+
+            {/* Google Login */}
+            <TouchableOpacity
+              style={[styles.googleButton, loading && styles.loginButtonDisabled]}
+              onPress={handleGoogleLogin}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.googleIcon}>G</Text>
+              <Text style={styles.googleButtonText}>Google 계정으로 계속하기</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -208,7 +233,7 @@ const styles = StyleSheet.create({
   },
   logoArea: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 40,
   },
   logoCircle: {
     width: 96,
@@ -236,7 +261,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   inputArea: {
-    gap: 14,
+    gap: 12,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -248,6 +273,9 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     marginRight: 10,
+  },
+  eyeIcon: {
+    paddingLeft: 8,
   },
   input: {
     flex: 1,
@@ -264,7 +292,6 @@ const styles = StyleSheet.create({
   levelContainer: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 4,
   },
   levelChip: {
     flex: 1,
@@ -303,7 +330,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
-    marginTop: 6,
+    marginTop: 4,
   },
   loginButtonDisabled: {
     opacity: 0.7,
@@ -317,13 +344,12 @@ const styles = StyleSheet.create({
     color: '#5B5FEF',
     fontWeight: '600',
     textAlign: 'center',
-    marginTop: 8,
     fontSize: 14,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 6,
+    marginVertical: 2,
   },
   dividerLine: {
     flex: 1,
@@ -335,33 +361,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginHorizontal: 16,
   },
-  demoButton: {
+  googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F0F0FF',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     height: 54,
-    gap: 8,
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: '#DDDDE8',
   },
-  demoButtonText: {
-    color: '#5B5FEF',
+  googleIcon: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#4285F4',
+  },
+  googleButtonText: {
+    color: '#1A1A2E',
     fontSize: 16,
     fontWeight: '600',
-  },
-  demoInfo: {
-    marginTop: 40,
-    alignItems: 'center',
-    gap: 4,
-  },
-  demoInfoTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#8E8EA0',
-    marginBottom: 4,
-  },
-  demoInfoText: {
-    fontSize: 12,
-    color: '#B0B0C0',
   },
 });
