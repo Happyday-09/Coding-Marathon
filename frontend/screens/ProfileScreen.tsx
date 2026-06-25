@@ -11,10 +11,13 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { User, RunStats } from '../types';
-import { runService } from '../services/api';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { User, RunStats, RootStackParamList } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface ProfileScreenProps {
   user: User;
@@ -23,6 +26,7 @@ interface ProfileScreenProps {
 
 export default function ProfileScreen({ user, onLogout }: ProfileScreenProps) {
   const [stats, setStats] = useState<RunStats | null>(null);
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   useEffect(() => {
     loadStats();
@@ -30,8 +34,36 @@ export default function ProfileScreen({ user, onLogout }: ProfileScreenProps) {
 
   const loadStats = async () => {
     try {
-      const res = await runService.getStats(user.id);
-      if (res.success) setStats(res.data);
+      const { data, error } = await supabase
+        .from('runs')
+        .select('distance_m, duration_sec, calories_kcal, avg_pace_sec_per_km, started_at')
+        .eq('user_id', user.id);
+
+      if (error || !data) return;
+
+      const totalDistance = data.reduce((s, r) => s + r.distance_m / 1000, 0);
+      const totalDuration = data.reduce((s, r) => s + r.duration_sec, 0);
+      const totalCalories = data.reduce((s, r) => s + (r.calories_kcal ?? 0), 0);
+      const paceRuns = data.filter((r) => r.avg_pace_sec_per_km && r.avg_pace_sec_per_km > 0);
+      const averagePace = paceRuns.length > 0
+        ? paceRuns.reduce((s, r) => s + (r.avg_pace_sec_per_km ?? 0), 0) / paceRuns.length
+        : 0;
+
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+      const weeklyDistance = data
+        .filter((r) => new Date(r.started_at) >= weekStart)
+        .reduce((s, r) => s + r.distance_m / 1000, 0);
+
+      setStats({
+        totalDistance,
+        totalDuration,
+        totalCalories,
+        totalRuns: data.length,
+        averagePace,
+        weeklyDistance,
+      });
     } catch {
       // ignore
     }
@@ -53,15 +85,35 @@ export default function ProfileScreen({ user, onLogout }: ProfileScreenProps) {
   };
 
   const menuItems = [
-    { icon: 'person-outline' as const, label: 'Personal parameters', color: '#5B5FEF' },
-    { icon: 'trophy-outline' as const, label: 'Achievements', color: '#FF9500' },
-    { icon: 'settings-outline' as const, label: 'Settings', color: '#34C759' },
-    { icon: 'heart-outline' as const, label: 'Our contact', color: '#FF6B6B' },
+    {
+      icon: 'person-outline' as const,
+      label: 'Personal parameters',
+      color: '#5B5FEF',
+      onPress: () => navigation.navigate('PersonalParameters', { userId: user.id }),
+    },
+    {
+      icon: 'trophy-outline' as const,
+      label: 'Achievements',
+      color: '#FF9500',
+      onPress: () => Alert.alert('준비 중', '업적 기능은 곧 추가됩니다!'),
+    },
+    {
+      icon: 'settings-outline' as const,
+      label: 'Settings',
+      color: '#34C759',
+      onPress: () => navigation.navigate('Settings'),
+    },
+    {
+      icon: 'heart-outline' as const,
+      label: 'Our contact',
+      color: '#FF6B6B',
+      onPress: () => Alert.alert('문의하기', 'support@runmate.app'),
+    },
   ];
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Profile</Text>
@@ -84,7 +136,7 @@ export default function ProfileScreen({ user, onLogout }: ProfileScreenProps) {
         </View>
 
         {/* Total Progress Card */}
-        <TouchableOpacity style={styles.progressCard} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.progressCard} activeOpacity={0.8} onPress={() => navigation.navigate('RunHistory', { userId: user.id })}>
           <View style={styles.progressHeader}>
             <Text style={styles.progressTitle}>Total progress</Text>
             <Ionicons name="chevron-forward" size={18} color="#8E8EA0" />
@@ -119,7 +171,7 @@ export default function ProfileScreen({ user, onLogout }: ProfileScreenProps) {
         {/* Menu Items */}
         <View style={styles.menuSection}>
           {menuItems.map((item, idx) => (
-            <TouchableOpacity key={idx} style={styles.menuItem} activeOpacity={0.7}>
+            <TouchableOpacity key={idx} style={styles.menuItem} activeOpacity={0.7} onPress={item.onPress}>
               <View style={[styles.menuIconBg, { backgroundColor: item.color + '15' }]}>
                 <Ionicons name={item.icon} size={20} color={item.color} />
               </View>
@@ -143,6 +195,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    overflow: 'hidden' as const,
   },
   scrollContent: {
     paddingBottom: 30,

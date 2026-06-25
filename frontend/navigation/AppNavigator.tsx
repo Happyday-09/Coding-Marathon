@@ -16,6 +16,9 @@ import CourseListScreen from '../screens/CourseListScreen';
 import CourseDetailScreen from '../screens/CourseDetailScreen';
 import BattleScreen from '../screens/BattleScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import PersonalParametersScreen from '../screens/PersonalParametersScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import RunHistoryScreen from '../screens/RunHistoryScreen';
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
@@ -82,10 +85,27 @@ export default function AppNavigator({ user, onLogout }: AppNavigatorProps) {
       <Stack.Screen
         name="CourseDetail"
         component={CourseDetailScreen}
-        options={{
-          presentation: 'card',
-        }}
+        options={{ presentation: 'card' }}
       />
+      <Stack.Screen name="PersonalParameters">
+        {(props) => (
+          <PersonalParametersScreen
+            {...props}
+            userId={user.id}
+          />
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="Settings">
+        {(props) => <SettingsScreen {...props} />}
+      </Stack.Screen>
+      <Stack.Screen name="RunHistory">
+        {(props) => (
+          <RunHistoryScreen
+            {...props}
+            userId={(props.route.params as { userId: string }).userId}
+          />
+        )}
+      </Stack.Screen>
     </Stack.Navigator>
   );
 }

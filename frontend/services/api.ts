@@ -6,7 +6,7 @@ import axios from 'axios';
 import { User, Run, RunStats, Course, Battle } from '../types';
 
 // Change this to your backend URL
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = 'http://192.168.25.105:3000/api';
 
 const api = axios.create({
   baseURL: API_BASE,

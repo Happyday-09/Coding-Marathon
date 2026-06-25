@@ -88,6 +88,9 @@ export type RootStackParamList = {
   Login: undefined;
   Main: undefined;
   CourseDetail: { courseId: string };
+  PersonalParameters: { userId: string };
+  Settings: undefined;
+  RunHistory: { userId: string };
 };
 
 export type RunTabParams = {
