@@ -2,7 +2,7 @@
 // 🗺️ Course List Screen — AI Recommended Courses
 // ============================================
 
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -34,11 +34,21 @@ const difficultyLabels: Record<string, string> = {
   hard: '어려움',
 };
 
+// Strip markdown symbols for plain text display
+const stripMarkdown = (text: string): string =>
+  text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/^\s*\*+\s*/gm, '• ')
+    .replace(/^\s*#{1,6}\s*/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
 export default function CourseListScreen({ user, navigation }: CourseListScreenProps) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [aiMessage, setAiMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedRegion, setSelectedRegion] = useState('전체');
+  const [aiExpanded, setAiExpanded] = useState(false);
 
   useEffect(() => {
     loadCourses();
@@ -60,27 +70,24 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
   };
 
   const provinces = useMemo(() => {
-    const list = courses
-      .map((c) => c.province)
-      .filter((p): p is string => !!p);
-    const unique = Array.from(new Set(list)).sort();
-    return ['전체', ...unique];
+    const list = courses.map((c) => c.province).filter((p): p is string => !!p);
+    return ['전체', ...Array.from(new Set(list)).sort()];
   }, [courses]);
 
   const regionCounts = useMemo(() => {
     const counts: Record<string, number> = { 전체: courses.length };
     courses.forEach((c) => {
-      if (c.province) {
-        counts[c.province] = (counts[c.province] || 0) + 1;
-      }
+      if (c.province) counts[c.province] = (counts[c.province] || 0) + 1;
     });
     return counts;
   }, [courses]);
 
-  const filteredCourses = useMemo(() => {
-    if (selectedRegion === '전체') return courses;
-    return courses.filter((c) => c.province === selectedRegion);
-  }, [courses, selectedRegion]);
+  const filteredCourses = useMemo(
+    () => (selectedRegion === '전체' ? courses : courses.filter((c) => c.province === selectedRegion)),
+    [courses, selectedRegion]
+  );
+
+  const cleanedAiMessage = useMemo(() => (aiMessage ? stripMarkdown(aiMessage) : ''), [aiMessage]);
 
   const renderCourse = ({ item }: { item: Course }) => (
     <TouchableOpacity
@@ -90,7 +97,7 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
     >
       <View style={styles.cardHeader}>
         <View style={styles.cardTitleRow}>
-          <Text style={styles.cardName}>{item.name}</Text>
+          <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
           <Ionicons name="chevron-forward" size={18} color="#D0D0D8" />
         </View>
         <View style={styles.cardLocation}>
@@ -115,14 +122,43 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
         </View>
       </View>
 
-      <View style={styles.tagRow}>
-        {item.tags.slice(0, 3).map((tag, idx) => (
-          <View key={idx} style={styles.tag}>
-            <Text style={styles.tagText}>#{tag}</Text>
-          </View>
-        ))}
-      </View>
+      {item.tags.length > 0 && (
+        <View style={styles.tagRow}>
+          {item.tags.slice(0, 3).map((tag, idx) => (
+            <View key={idx} style={styles.tag}>
+              <Text style={styles.tagText}>#{tag}</Text>
+            </View>
+          ))}
+        </View>
+      )}
     </TouchableOpacity>
+  );
+
+  const ListHeader = (
+    <>
+      <View style={styles.header}>
+        <Text style={styles.title}>추천 코스</Text>
+        <Text style={styles.subtitle}>AI가 추천하는 러닝 코스</Text>
+      </View>
+
+      {cleanedAiMessage ? (
+        <TouchableOpacity
+          style={styles.aiCard}
+          activeOpacity={0.85}
+          onPress={() => setAiExpanded((v) => !v)}
+        >
+          <View style={styles.aiIconBg}>
+            <Ionicons name="sparkles" size={16} color="#5B5FEF" />
+          </View>
+          <View style={styles.aiTextContainer}>
+            <Text style={styles.aiMessage} numberOfLines={aiExpanded ? undefined : 2}>
+              {cleanedAiMessage}
+            </Text>
+            <Text style={styles.aiToggle}>{aiExpanded ? '접기 ▲' : '더 보기 ▼'}</Text>
+          </View>
+        </TouchableOpacity>
+      ) : null}
+    </>
   );
 
   if (loading) {
@@ -135,22 +171,7 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>추천 코스</Text>
-        <Text style={styles.subtitle}>AI가 추천하는 러닝 코스</Text>
-      </View>
-
-      {/* AI Recommendation Message */}
-      {aiMessage ? (
-        <View style={styles.aiCard}>
-          <View style={styles.aiIconBg}>
-            <Ionicons name="sparkles" size={18} color="#5B5FEF" />
-          </View>
-          <Text style={styles.aiMessage}>{aiMessage}</Text>
-        </View>
-      ) : null}
-
-      {/* Regional Categories Tab Bar */}
+      {/* Tab bar — stays fixed at top */}
       <View style={styles.tabBarContainer}>
         <ScrollView
           horizontal
@@ -187,12 +208,14 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
         </ScrollView>
       </View>
 
+      {/* FlatList — header + courses scroll together */}
       <FlatList
         data={filteredCourses}
         renderItem={renderCourse}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={ListHeader}
       />
     </SafeAreaView>
   );
@@ -221,32 +244,41 @@ const styles = StyleSheet.create({
   aiCard: {
     flexDirection: 'row',
     marginHorizontal: 20,
-    marginTop: 12,
-    marginBottom: 8,
-    padding: 14,
+    marginTop: 10,
+    marginBottom: 10,
+    padding: 12,
     backgroundColor: '#F0F0FF',
     borderRadius: 14,
     gap: 10,
     alignItems: 'flex-start',
   },
   aiIconBg: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#E0E0FF',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  aiTextContainer: {
+    flex: 1,
   },
   aiMessage: {
-    flex: 1,
     fontSize: 13,
     color: '#1A1A2E',
-    lineHeight: 20,
+    lineHeight: 19,
+  },
+  aiToggle: {
+    fontSize: 11,
+    color: '#5B5FEF',
+    fontWeight: '600',
+    marginTop: 4,
   },
   listContent: {
     paddingHorizontal: 20,
     paddingBottom: 30,
-    paddingTop: 8,
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -273,6 +305,8 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: '#1A1A2E',
+    flex: 1,
+    marginRight: 8,
   },
   cardLocation: {
     flexDirection: 'row',
