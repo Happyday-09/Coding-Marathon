@@ -72,7 +72,12 @@ export default function App() {
     });
 
     if (error) {
-      Alert.alert('회원가입 실패', error.message);
+      const msg = error.message.includes('already registered')
+        ? '이미 가입된 이메일입니다. 로그인을 이용해주세요.'
+        : error.message.includes('rate limit')
+        ? '잠시 후 다시 시도해주세요. (이메일 발송 한도 초과)'
+        : error.message;
+      Alert.alert('회원가입 실패', msg);
       return;
     }
 
@@ -82,7 +87,16 @@ export default function App() {
         nickname,
         running_level: level,
       });
-      Alert.alert('회원가입 완료', `${nickname}님, 가입을 환영합니다!`);
+
+      const needsConfirmation = !data.session;
+      if (needsConfirmation) {
+        Alert.alert(
+          '이메일 확인 필요',
+          `${email}로 확인 메일을 보냈습니다.\n메일함에서 링크를 클릭한 후 로그인해주세요.`
+        );
+      } else {
+        Alert.alert('회원가입 완료', `${nickname}님, 가입을 환영합니다!`);
+      }
     }
   };
 
@@ -118,8 +132,8 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
     setUser(null);
+    await supabase.auth.signOut();
   };
 
   return (

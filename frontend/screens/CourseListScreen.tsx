@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { User, Course } from '../types';
 import { courseService } from '../services/api';
+import { supabase } from '../lib/supabase';
 
 interface CourseListScreenProps {
   user: User;
@@ -61,6 +62,30 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
   const [selectedDistance, setSelectedDistance] = useState(5);
   const [selectedRouteStyle, setSelectedRouteStyle] = useState<'one_way' | 'round_trip'>('one_way');
   const [selectedRadius, setSelectedRadius] = useState(20);
+  const [userPaceMin, setUserPaceMin] = useState(5);
+  const [userPaceSec, setUserPaceSec] = useState(30);
+
+  useEffect(() => {
+    loadUserPace();
+  }, []);
+
+  const loadUserPace = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('target_pace_min, target_pace_sec')
+      .eq('id', user.id)
+      .single();
+    if (data?.target_pace_min != null) setUserPaceMin(data.target_pace_min);
+    if (data?.target_pace_sec != null) setUserPaceSec(data.target_pace_sec);
+  };
+
+  const calcEstimatedTime = (distanceKm: number): string => {
+    const totalSec = (userPaceMin * 60 + userPaceSec) * distanceKm;
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    if (h > 0) return `${h}시간 ${m}분`;
+    return `${m}분`;
+  };
 
   useEffect(() => {
     loadCourses();
@@ -134,7 +159,7 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
         </View>
         <View style={styles.statChip}>
           <Ionicons name="time-outline" size={14} color="#5B5FEF" />
-          <Text style={styles.statChipText}>{item.estimatedTime}분</Text>
+          <Text style={styles.statChipText}>{calcEstimatedTime(item.distance)}</Text>
         </View>
         <View style={[styles.difficultyChip, { backgroundColor: difficultyColors[item.difficulty] + '18' }]}>
           <Text style={[styles.difficultyText, { color: difficultyColors[item.difficulty] }]}>
@@ -143,7 +168,7 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
         </View>
       </View>
 
-      {item.tags.length > 0 && (
+      {item.tags && item.tags.length > 0 ? (
         <View style={styles.tagRow}>
           {item.tags.slice(0, 3).map((tag, idx) => (
             <View key={idx} style={styles.tag}>
@@ -151,7 +176,7 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
             </View>
           ))}
         </View>
-      )}
+      ) : null}
     </TouchableOpacity>
   );
 
@@ -171,7 +196,7 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
           {item.distance}km {item.routeStyle === 'round_trip' ? '왕복' : '편도'}
           {item.totalDistance ? ` · 전체 ${item.totalDistance}km` : ''}
         </Text>
-        {item.recommendationReason ? (
+        {!!item.recommendationReason ? (
           <Text style={styles.recommendReason} numberOfLines={2}>{item.recommendationReason}</Text>
         ) : null}
       </View>
@@ -229,7 +254,7 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
         </View>
       </View>
 
-      {cleanedAiMessage ? (
+      {!!cleanedAiMessage ? (
         <TouchableOpacity
           style={styles.aiCard}
           activeOpacity={0.85}

@@ -11,13 +11,31 @@ import {
   TouchableOpacity,
   Dimensions,
   Alert,
+  Platform,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import MapView, { Polyline, Marker } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { User, RoutePoint } from '../types';
-import { runService, battleService } from '../services/api';
+import { battleService } from '../services/api';
+import { supabase } from '../lib/supabase';
 
 const { width, height } = Dimensions.get('window');
+
+// Haversine formula: distance in km between two GPS coords
+function haversineKm(a: RoutePoint, b: RoutePoint): number {
+  const R = 6371;
+  const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;
+  const dLon = ((b.longitude - a.longitude) * Math.PI) / 180;
+  const lat1 = (a.latitude * Math.PI) / 180;
+  const lat2 = (b.latitude * Math.PI) / 180;
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
 
 interface RunScreenProps {
   user: User;
@@ -34,22 +52,6 @@ interface RunScreenProps {
   navigation?: any;
 }
 
-// Dummy route simulation around 여의도
-const simulatedRoute: RoutePoint[] = [
-  { latitude: 37.5283, longitude: 126.9340 },
-  { latitude: 37.5275, longitude: 126.9360 },
-  { latitude: 37.5268, longitude: 126.9385 },
-  { latitude: 37.5260, longitude: 126.9410 },
-  { latitude: 37.5252, longitude: 126.9440 },
-  { latitude: 37.5245, longitude: 126.9470 },
-  { latitude: 37.5238, longitude: 126.9500 },
-  { latitude: 37.5230, longitude: 126.9530 },
-  { latitude: 37.5223, longitude: 126.9560 },
-  { latitude: 37.5215, longitude: 126.9590 },
-  { latitude: 37.5208, longitude: 126.9620 },
-  { latitude: 37.5200, longitude: 126.9650 },
-];
-
 export default function RunScreen({ user, route, navigation }: RunScreenProps) {
   const battleId = route?.params?.battleId;
   const challengeMode = route?.params?.challengeMode;
@@ -63,19 +65,116 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
   const [elapsed, setElapsed] = useState(0);
   const [distance, setDistance] = useState(0);
   const [calories, setCalories] = useState(0);
-  const [currentRouteIndex, setCurrentRouteIndex] = useState(0);
   const [trackedRoute, setTrackedRoute] = useState<RoutePoint[]>([]);
+  const [currentLocation, setCurrentLocation] = useState<RoutePoint | null>(null);
+  const [locationPermission, setLocationPermission] = useState<'granted' | 'denied' | 'pending'>('pending');
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
+  const [pendingRun, setPendingRun] = useState<{ distance: number; elapsed: number; calories: number } | null>(null);
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const locationSubRef = useRef<Location.LocationSubscription | null>(null);
   const mapRef = useRef<MapView>(null);
 
-  // Dynamically choose route coordinates based on route parameters
-  const activeRoute = (courseCoordinates && courseCoordinates.length > 0)
-    ? courseCoordinates
-    : simulatedRoute;
-
-  // Automatically center map and reset state when new parameters are received
+  // Request GPS permission on mount
   useEffect(() => {
-    if (activeRoute && activeRoute.length > 0 && mapRef.current) {
+    requestLocationPermission();
+    return () => {
+      locationSubRef.current?.remove();
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  const requestLocationPermission = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        setLocationPermission('granted');
+        // Get initial position
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+        const point: RoutePoint = {
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+        };
+        setCurrentLocation(point);
+        mapRef.current?.animateToRegion({
+          latitude: point.latitude,
+          longitude: point.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        }, 1000);
+      } else {
+        setLocationPermission('denied');
+        Alert.alert(
+          'GPS 권한 필요',
+          '러닝 트래킹을 위해 위치 권한이 필요합니다. 설정에서 권한을 허용해주세요.',
+          [{ text: '확인' }]
+        );
+      }
+    } catch (e) {
+      setLocationPermission('denied');
+    }
+  };
+
+  const startGpsTracking = async () => {
+    try {
+      locationSubRef.current?.remove();
+      locationSubRef.current = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 2000,
+          distanceInterval: 5,
+        },
+        (loc) => {
+          const newPoint: RoutePoint = {
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+            timestamp: new Date(loc.timestamp).toISOString(),
+          };
+          setGpsAccuracy(loc.coords.accuracy ?? null);
+          setCurrentLocation(newPoint);
+
+          setTrackedRoute((prev) => {
+            const updated = [...prev, newPoint];
+            if (prev.length > 0) {
+              const last = prev[prev.length - 1];
+              const delta = haversineKm(last, newPoint);
+              if (delta < 0.1) {
+                setDistance((d) => Math.round((d + delta) * 1000) / 1000);
+                setCalories((c) => c + Math.round(delta * 60));
+              }
+            }
+            return updated;
+          });
+
+          mapRef.current?.animateToRegion({
+            latitude: newPoint.latitude,
+            longitude: newPoint.longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }, 500);
+        }
+      );
+    } catch (e: any) {
+      console.error('GPS 추적 시작 실패:', e?.message);
+    }
+  };
+
+  const stopGpsTracking = () => {
+    locationSubRef.current?.remove();
+    locationSubRef.current = null;
+  };
+
+  // Course coordinates used only for ghost competitor display / map overlay
+  const activeRoute = courseCoordinates && courseCoordinates.length > 0
+    ? courseCoordinates
+    : [];
+
+  // Center map on course start point when course is selected
+  useEffect(() => {
+    if (activeRoute.length > 0 && mapRef.current) {
       const startPoint = activeRoute[0];
       mapRef.current.animateToRegion({
         latitude: startPoint.latitude,
@@ -83,15 +182,6 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
         latitudeDelta: 0.02,
         longitudeDelta: 0.02,
       }, 500);
-
-      // Reset state for new run
-      setTrackedRoute([]);
-      setCurrentRouteIndex(0);
-      setDistance(0);
-      setCalories(0);
-      setElapsed(0);
-      setIsRunning(false);
-      setIsPaused(false);
     }
   }, [route?.params]);
 
@@ -111,10 +201,10 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
 
   // Calculate Ghost Coordinate along activeRoute based on ratio of distance
   const ghostCoordinate = useMemo(() => {
-    if (!challengeMode || !targetDistance || activeRoute.length === 0) return activeRoute[0];
+    if (!challengeMode || !targetDistance || activeRoute.length === 0) return null;
     const ratio = Math.min(1, ghostProgress / targetDistance);
     const index = Math.min(activeRoute.length - 1, Math.floor(ratio * activeRoute.length));
-    return activeRoute[index] || activeRoute[0];
+    return activeRoute[index] || activeRoute[0] || null;
   }, [challengeMode, ghostProgress, targetDistance, activeRoute]);
 
   const playCoachingVoice = (message: string) => {
@@ -179,47 +269,15 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
     };
   }, [isRunning, isPaused]);
 
-  // Simulate movement every 3 seconds
-  useEffect(() => {
-    if (isRunning && !isPaused && elapsed > 0 && elapsed % 3 === 0) {
-      if (currentRouteIndex < activeRoute.length) {
-        const nextPoint = activeRoute[currentRouteIndex];
-        setTrackedRoute((prev) => [...prev, nextPoint]);
-        setCurrentRouteIndex((prev) => prev + 1);
-
-        // Update distance (roughly 0.3km per segment)
-        setDistance((prev) => Math.round((prev + 0.28 + Math.random() * 0.1) * 100) / 100);
-        setCalories((prev) => prev + Math.floor(15 + Math.random() * 10));
-
-        // Animate map to current position
-        mapRef.current?.animateToRegion({
-          latitude: nextPoint.latitude,
-          longitude: nextPoint.longitude,
-          latitudeDelta: 0.015,
-          longitudeDelta: 0.015,
-        }, 1000);
-      }
-    }
-  }, [elapsed, isRunning, isPaused]);
-
   // Automated Win/Loss Trigger when reaching the target distance
   useEffect(() => {
     if (challengeMode && isRunning && targetDistance && distance >= targetDistance) {
       setIsRunning(false);
       setIsPaused(false);
       if (timerRef.current) clearInterval(timerRef.current);
-
-      Alert.alert(
-        '도전 완주! 🏁',
-        `도전 타겟 거리인 ${targetDistance.toFixed(2)}km를 돌파했습니다! 결과를 정산합니다.`,
-        [
-          {
-            text: '결과 보기',
-            onPress: () => handleCompleteChallenge(distance, elapsed, calories),
-          },
-        ],
-        { cancelable: false }
-      );
+      stopGpsTracking();
+      setPendingRun({ distance, elapsed, calories });
+      setShowSummary(true);
     }
   }, [distance, challengeMode, isRunning, targetDistance]);
 
@@ -230,117 +288,196 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
-  const pace = elapsed > 0 && distance > 0 ? (distance / (elapsed / 3600)).toFixed(1) : '0.0';
+  // Pace in min/km
+  const paceDisplay = elapsed > 0 && distance > 0
+    ? (() => {
+        const minPerKm = elapsed / 60 / distance;
+        const m = Math.floor(minPerKm);
+        const s = Math.round((minPerKm - m) * 60);
+        return `${m}'${String(s).padStart(2, '0')}"`;
+      })()
+    : "--'--\"";
 
   const handleStartStop = async () => {
     if (!isRunning) {
+      // Start run
+      if (locationPermission === 'denied' || locationPermission === 'pending') {
+        Alert.alert('GPS 권한 없음', '위치 권한을 허용해야 러닝을 시작할 수 있습니다.', [
+          { text: '확인' },
+        ]);
+        return;
+      }
       setIsRunning(true);
       setIsPaused(false);
       setElapsed(0);
       setDistance(0);
       setCalories(0);
-      setCurrentRouteIndex(0);
-      setTrackedRoute([activeRoute[0]]);
-    } else {
-      // Stop button clicked manually
-      setIsRunning(false);
-      setIsPaused(false);
+      setTrackedRoute(currentLocation ? [currentLocation] : []);
+      await startGpsTracking();
+    } else if (!isPaused) {
+      // First stop: pause the run
+      setIsPaused(true);
       if (timerRef.current) clearInterval(timerRef.current);
-
-      if (challengeMode) {
-        // Manually stopped challenge
-        Alert.alert(
-          '러닝 종료 🏁',
-          '도전을 중도 종료하고 결과를 전송하시겠습니까?',
-          [
-            {
-              text: '취소',
-              onPress: () => {
-                setIsRunning(true);
-              },
-              style: 'cancel',
-            },
-            {
-              text: '전송 및 종료',
-              onPress: () => handleCompleteChallenge(distance, elapsed, calories),
-            },
-          ]
-        );
-      } else {
-        // Normal Run stop
-        await handleSaveNormalRun(distance, elapsed, calories);
-      }
+      stopGpsTracking();
     }
   };
 
-  const handleSaveNormalRun = async (d: number, t: number, c: number) => {
-    if (d < 0.1) {
-      Alert.alert('알림', '러닝 거리가 너무 짧아 기록을 저장하지 않습니다.');
-      return;
-    }
+  const handleFinishRun = () => {
+    setIsRunning(false);
+    setIsPaused(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+    stopGpsTracking();
+    setPendingRun({ distance, elapsed, calories });
+    setShowSummary(true);
+  };
 
-    try {
-      const paceVal = t > 0 && d > 0 ? (t / 60) / d : 0;
-      const res = await runService.create({
-        userId: user.id,
-        distance: d,
-        duration: t,
-        pace: Math.round(paceVal * 100) / 100,
-        calories: c,
-        route: trackedRoute,
-      });
-      if (res.success) {
+  const handleConfirmSave = async () => {
+    if (!pendingRun) return;
+    setShowSummary(false);
+    if (challengeMode) {
+      await handleCompleteChallenge(pendingRun.distance, pendingRun.elapsed, pendingRun.calories);
+      setPendingRun(null);
+    } else {
+      const id = await saveRunToSupabase(pendingRun.distance, pendingRun.elapsed, pendingRun.calories);
+      setPendingRun(null);
+      if (id) {
+        resetRunState();
         Alert.alert('기록 완료 🏃', '오늘의 러닝이 성공적으로 저장되었습니다!');
+      } else {
+        Alert.alert('저장 실패', '러닝 기록 저장에 실패했습니다.\n인터넷 연결과 로그인을 확인해주세요.');
       }
-    } catch {
-      Alert.alert('오류', '러닝 기록 저장에 실패했습니다.');
     }
   };
 
-  const handleCompleteChallenge = async (d: number, t: number, c: number) => {
-    try {
-      const paceVal = t > 0 && d > 0 ? (t / 60) / d : 0;
-      // 1. Submit the run
-      const runRes = await runService.create({
-        userId: user.id,
-        distance: d,
-        duration: t,
-        pace: Math.round(paceVal * 100) / 100,
-        calories: c,
-        route: trackedRoute,
-      });
-
-      if (runRes.success && runRes.data && battleId) {
-        // 2. Submit run reference to complete the battle challenge
-        const battleRes = await battleService.complete(battleId, runRes.data.id);
-        if (battleRes.success) {
-          Alert.alert('결과 정산 ⚔️', battleRes.message);
-          
-          // Clear route params & go back
-          if (navigation) {
-            navigation.setParams({
-              battleId: undefined,
-              challengeMode: undefined,
-              targetDistance: undefined,
-              targetDuration: undefined,
-              challengerName: undefined,
-            });
-            navigation.navigate('Battle');
-          }
-        }
-      }
-    } catch {
-      Alert.alert('오류', '도전 결과 정산 처리에 실패했습니다.');
-    }
+  const handleDiscard = () => {
+    setShowSummary(false);
+    setPendingRun(null);
+    resetRunState();
   };
 
   const handlePauseResume = () => {
-    setIsPaused(!isPaused);
+    if (isPaused) {
+      setIsPaused(false);
+      startGpsTracking();
+    } else {
+      setIsPaused(true);
+      stopGpsTracking();
+    }
+  };
+
+  const saveRunToSupabase = async (d: number, t: number, c: number): Promise<string | null> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        Alert.alert('저장 실패', '로그인 세션이 없습니다. 다시 로그인해주세요.');
+        return null;
+      }
+
+      const endedAt = new Date();
+      const startedAt = new Date(endedAt.getTime() - t * 1000);
+      const avgPaceSec = d > 0 ? Math.round(t / d) : 0;
+
+      const { data: runData, error: runError } = await supabase
+        .from('runs')
+        .insert({
+          user_id: session.user.id,
+          distance_m: Math.round(d * 1000),
+          duration_sec: t,
+          avg_pace_sec_per_km: avgPaceSec,
+          calories_kcal: c,
+          started_at: startedAt.toISOString(),
+          ended_at: endedAt.toISOString(),
+          visibility: 'private',
+        })
+        .select('id')
+        .single();
+
+      if (runError) {
+        Alert.alert('DB 저장 실패', runError.message);
+        return null;
+      }
+
+      const runId = runData?.id;
+
+      // Save GPS route points
+      if (runId && trackedRoute.length > 0) {
+        const validPoints = trackedRoute.filter(
+          (pt) => pt.latitude !== 0 && pt.longitude !== 0 &&
+            Math.abs(pt.latitude) <= 90 && Math.abs(pt.longitude) <= 180
+        );
+        if (validPoints.length > 0) {
+          const points = validPoints.map((pt, idx) => ({
+            run_id: runId,
+            seq: idx,
+            lng: pt.longitude,
+            lat: pt.latitude,
+            recorded_at: pt.timestamp ?? null,
+            segment_distance_m: 0,
+            distance_from_start_m: 0,
+          }));
+          const { error: ptErr } = await supabase.from('run_points').insert(points);
+          if (ptErr) {
+            console.error('run_points 저장 실패:', ptErr.message, ptErr.code);
+          }
+        } else {
+          console.log('유효한 GPS 좌표 없음');
+        }
+      } else {
+        console.log('trackedRoute 없음:', trackedRoute.length);
+      }
+
+      return runId ?? null;
+    } catch (e: any) {
+      Alert.alert('저장 오류', String(e?.message ?? e));
+      return null;
+    }
+  };
+
+  const resetRunState = () => {
+    setElapsed(0);
+    setDistance(0);
+    setCalories(0);
+    setTrackedRoute([]);
+    setIsRunning(false);
+    setIsPaused(false);
+  };
+
+  const handleCompleteChallenge = async (d: number, t: number, c: number) => {
+    const runId = await saveRunToSupabase(d, t, c);
+
+    if (!runId) {
+      Alert.alert('저장 실패', '러닝 기록 저장에 실패했습니다.');
+      return;
+    }
+
+    resetRunState();
+
+    if (battleId) {
+      try {
+        const battleRes = await battleService.complete(battleId, runId);
+        Alert.alert('결과 정산 ⚔️', battleRes.success ? battleRes.message : '도전이 완료되었습니다!');
+      } catch {
+        Alert.alert('기록 완료 🏃', '러닝 기록은 저장되었습니다. 배틀 정산은 나중에 확인해주세요.');
+      }
+    } else {
+      Alert.alert('기록 완료 🏃', '도전 기록이 저장되었습니다!');
+    }
+
+    if (navigation) {
+      navigation.setParams({
+        battleId: undefined,
+        challengeMode: undefined,
+        targetDistance: undefined,
+        targetDuration: undefined,
+        challengerName: undefined,
+      });
+      navigation.navigate('Battle');
+    }
   };
 
   const currentPosition = trackedRoute.length > 0
     ? trackedRoute[trackedRoute.length - 1]
-    : activeRoute[0];
+    : currentLocation ?? { latitude: 37.5665, longitude: 126.978 };
 
   return (
     <View style={styles.container}>
@@ -349,11 +486,13 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
         ref={mapRef}
         style={styles.map}
         initialRegion={{
-          latitude: 37.5283,
-          longitude: 126.9480,
-          latitudeDelta: 0.025,
-          longitudeDelta: 0.025,
+          latitude: currentLocation?.latitude ?? 37.5665,
+          longitude: currentLocation?.longitude ?? 126.978,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
         }}
+        showsUserLocation={locationPermission === 'granted'}
+        followsUserLocation={isRunning && !isPaused}
       >
         {trackedRoute.length > 1 && (
           <Polyline
@@ -362,14 +501,14 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
             strokeWidth={4}
           />
         )}
-        {trackedRoute.length > 0 && (
+        {currentPosition?.latitude != null && currentPosition?.longitude != null && (
           <Marker coordinate={currentPosition}>
             <View style={styles.markerDot}>
               <View style={styles.markerInner} />
             </View>
           </Marker>
         )}
-        {challengeMode && isRunning && (
+        {challengeMode && isRunning && ghostCoordinate && (
           <Marker coordinate={ghostCoordinate}>
             <View style={styles.ghostMarkerDot}>
               <View style={styles.ghostMarkerInner}>
@@ -403,8 +542,18 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
               : 'Ready to run'}
           </Text>
           <View style={styles.gpsIndicator}>
-            <Text style={styles.gpsText}>GPS</Text>
-            <Ionicons name="cellular" size={14} color="#5B5FEF" />
+            <View style={[
+              styles.gpsDot,
+              { backgroundColor: locationPermission === 'granted' ? '#34C759' : '#FF3B30' }
+            ]} />
+            <Text style={[
+              styles.gpsText,
+              { color: locationPermission === 'granted' ? '#34C759' : '#FF3B30' }
+            ]}>
+              {locationPermission === 'pending' ? 'GPS...' : locationPermission === 'granted'
+                ? gpsAccuracy != null ? `GPS ±${Math.round(gpsAccuracy)}m` : 'GPS 연결됨'
+                : 'GPS 없음'}
+            </Text>
           </View>
         </View>
 
@@ -458,11 +607,11 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
                 />
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.stopButton}
-                onPress={handleStartStop}
+                style={[styles.stopButton, isPaused && styles.stopButtonActive]}
+                onPress={isPaused ? handleFinishRun : handleStartStop}
                 activeOpacity={0.8}
               >
-                <Ionicons name="stop" size={20} color="#FF6B6B" />
+                <Ionicons name="stop" size={20} color={isPaused ? '#FFFFFF' : '#FF6B6B'} />
               </TouchableOpacity>
             </View>
           ) : (
@@ -489,11 +638,116 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
           </View>
           <View style={styles.statItem}>
             <Ionicons name="speedometer" size={16} color="#5B5FEF" />
-            <Text style={styles.statValue}>{pace}</Text>
-            <Text style={styles.statLabel}>km/hr</Text>
+            <Text style={styles.statValue}>{paceDisplay}</Text>
+            <Text style={styles.statLabel}>min/km</Text>
           </View>
         </View>
       </View>
+
+      {/* Run Summary Modal */}
+      <Modal visible={showSummary} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>러닝 요약</Text>
+              <TouchableOpacity onPress={handleDiscard}>
+                <Ionicons name="close" size={24} color="#1A1A2E" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalBody}>
+              {/* Route Map */}
+              {trackedRoute.length > 1 ? (
+                <MapView
+                  style={styles.summaryMap}
+                  scrollEnabled={false}
+                  zoomEnabled={false}
+                  initialRegion={{
+                    latitude: trackedRoute[Math.floor(trackedRoute.length / 2)].latitude,
+                    longitude: trackedRoute[Math.floor(trackedRoute.length / 2)].longitude,
+                    latitudeDelta: 0.008,
+                    longitudeDelta: 0.008,
+                  }}
+                >
+                  <Polyline coordinates={trackedRoute} strokeColor="#5B5FEF" strokeWidth={5} />
+                </MapView>
+              ) : (
+                <View style={styles.summaryMapEmpty}>
+                  <Ionicons name="map-outline" size={24} color="#C0C0D0" />
+                  <Text style={styles.summaryMapEmptyText}>GPS 경로 없음</Text>
+                </View>
+              )}
+
+              {/* Stats Grid */}
+              <View style={styles.summaryGrid}>
+                <View style={styles.summaryItem}>
+                  <Ionicons name="flash" size={24} color="#5B5FEF" />
+                  <Text style={styles.summaryValue}>{pendingRun?.distance.toFixed(2)}</Text>
+                  <Text style={styles.summaryLabel}>km</Text>
+                </View>
+                <View style={styles.summaryItem}>
+                  <Ionicons name="time-outline" size={24} color="#FF9500" />
+                  <Text style={styles.summaryValue}>{formatTime(pendingRun?.elapsed ?? 0)}</Text>
+                  <Text style={styles.summaryLabel}>시간</Text>
+                </View>
+                <View style={styles.summaryItem}>
+                  <Ionicons name="speedometer" size={24} color="#5B5FEF" />
+                  <Text style={styles.summaryValue}>
+                    {pendingRun && pendingRun.distance > 0
+                      ? (() => {
+                          const minPerKm = (pendingRun.elapsed / 60) / pendingRun.distance;
+                          const m = Math.floor(minPerKm);
+                          const s = Math.round((minPerKm - m) * 60);
+                          return `${m}'${String(s).padStart(2, '0')}"`;
+                        })()
+                      : '--\'--"'}
+                  </Text>
+                  <Text style={styles.summaryLabel}>페이스</Text>
+                </View>
+                <View style={styles.summaryItem}>
+                  <Ionicons name="flame" size={24} color="#FF6B6B" />
+                  <Text style={styles.summaryValue}>{pendingRun?.calories}</Text>
+                  <Text style={styles.summaryLabel}>kcal</Text>
+                </View>
+              </View>
+
+              <View style={styles.summaryDivider} />
+
+              {/* Details */}
+              <View style={styles.detailsSection}>
+                <Text style={styles.detailsTitle}>상세 정보</Text>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>거리</Text>
+                  <Text style={styles.detailValue}>{pendingRun?.distance.toFixed(3)} km</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>소요 시간</Text>
+                  <Text style={styles.detailValue}>{formatTime(pendingRun?.elapsed ?? 0)}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>칼로리 소모</Text>
+                  <Text style={styles.detailValue}>{pendingRun?.calories} kcal</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>GPS 포인트</Text>
+                  <Text style={styles.detailValue}>{trackedRoute.length}개</Text>
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* Action Buttons */}
+            <View style={styles.modalFooter}>
+              <TouchableOpacity style={styles.discardBtn} onPress={handleDiscard}>
+                <Text style={styles.discardBtnText}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleConfirmSave}>
+                <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                <Text style={styles.saveBtnText}>{challengeMode ? '결과 전송' : '저장하기'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -529,12 +783,17 @@ const styles = StyleSheet.create({
   gpsIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+  },
+  gpsDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   gpsText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#5B5FEF',
+    color: '#34C759',
   },
   markerDot: {
     width: 22,
@@ -633,6 +892,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5FA',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  stopButtonActive: {
+    backgroundColor: '#FF3B30',
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   statsRow: {
     flexDirection: 'row',
@@ -743,5 +1010,140 @@ const styles = StyleSheet.create({
     color: '#1A1A2E',
     fontWeight: '700',
     lineHeight: 18,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 20,
+    paddingBottom: 32,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F5',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1A1A2E',
+  },
+  modalBody: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  summaryMap: {
+    width: '100%',
+    height: 200,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  summaryMapEmpty: {
+    width: '100%',
+    height: 100,
+    borderRadius: 16,
+    backgroundColor: '#F5F5FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    gap: 6,
+  },
+  summaryMapEmptyText: { fontSize: 12, color: '#C0C0D0' },
+  summaryGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  summaryItem: {
+    flex: 1,
+    backgroundColor: '#F5F5FA',
+    borderRadius: 14,
+    padding: 12,
+    alignItems: 'center',
+    gap: 4,
+  },
+  summaryValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A2E',
+  },
+  summaryLabel: {
+    fontSize: 11,
+    color: '#8E8EA0',
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: '#F0F0F5',
+    marginVertical: 16,
+  },
+  detailsSection: {
+    paddingBottom: 20,
+  },
+  detailsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1A2E',
+    marginBottom: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5FA',
+  },
+  detailLabel: {
+    fontSize: 13,
+    color: '#8E8EA0',
+    fontWeight: '500',
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#1A1A2E',
+    fontWeight: '600',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 20,
+    marginTop: 16,
+  },
+  discardBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#F5F5FA',
+    alignItems: 'center',
+  },
+  discardBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#8E8EA0',
+  },
+  saveBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#5B5FEF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  saveBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

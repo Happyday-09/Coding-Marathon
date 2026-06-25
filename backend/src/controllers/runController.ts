@@ -159,6 +159,7 @@ export const createRun = async (req: Request, res: Response): Promise<void> => {
         distance_m: distanceM,
         duration_sec: duration,
         avg_pace_sec_per_km: avgPaceSec,
+        calories_kcal: calories ? Math.round(calories) : Math.round(distanceM / 1000 * 70),
         route: routeWKT || null,
         started_at: startedAt.toISOString(),
         ended_at: endedAt.toISOString(),

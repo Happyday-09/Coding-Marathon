@@ -17,6 +17,7 @@ import MapView, { Polyline, Marker } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { Course } from '../types';
 import { courseService } from '../services/api';
+import { supabase } from '../lib/supabase';
 
 const { width, height } = Dimensions.get('window');
 
@@ -41,9 +42,12 @@ export default function CourseDetailScreen({ route, navigation }: CourseDetailSc
   const { courseId } = route.params;
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
+  const [paceMin, setPaceMin] = useState(5);
+  const [paceSec, setPaceSec] = useState(30);
 
   useEffect(() => {
     loadCourse();
+    loadUserPace();
   }, []);
 
   const loadCourse = async () => {
@@ -56,6 +60,28 @@ export default function CourseDetailScreen({ route, navigation }: CourseDetailSc
       setLoading(false);
     }
   };
+
+  const loadUserPace = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('target_pace_min, target_pace_sec')
+      .eq('id', user.id)
+      .single();
+    if (data?.target_pace_min != null) setPaceMin(data.target_pace_min);
+    if (data?.target_pace_sec != null) setPaceSec(data.target_pace_sec);
+  };
+
+  const calcEstimatedTime = (distanceKm: number): string => {
+    const totalSec = (paceMin * 60 + paceSec) * distanceKm;
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    if (h > 0) return `${h}시간 ${m}분`;
+    return `${m}분`;
+  };
+
+  const paceLabel = `${paceMin}'${String(paceSec).padStart(2, '0')}"/km 기준`;
 
   const getRegionForCoordinates = (points: { latitude: number; longitude: number }[]) => {
     if (!points || points.length === 0) {
@@ -167,7 +193,8 @@ export default function CourseDetailScreen({ route, navigation }: CourseDetailSc
               </View>
               <View style={styles.statBox}>
                 <Ionicons name="time-outline" size={20} color="#5B5FEF" />
-                <Text style={styles.statBoxValue}>{course.estimatedTime}분</Text>
+                <Text style={styles.statBoxValue}>{calcEstimatedTime(course.distance)}</Text>
+                <Text style={styles.statBoxHint}>{paceLabel}</Text>
                 <Text style={styles.statBoxLabel}>예상 시간</Text>
               </View>
               <View style={styles.statBox}>
@@ -305,6 +332,11 @@ const styles = StyleSheet.create({
   statBoxLabel: {
     fontSize: 11,
     color: '#8E8EA0',
+  },
+  statBoxHint: {
+    fontSize: 10,
+    color: '#5B5FEF',
+    marginTop: 1,
   },
   descriptionTitle: {
     fontSize: 16,
