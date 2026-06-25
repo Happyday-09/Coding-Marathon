@@ -101,7 +101,9 @@ export default function App() {
   };
 
   const handleGoogleLogin = async () => {
-    const redirectTo = 'exp://192.168.25.105:8081/--/auth/callback';
+    // Generate redirect URI dynamically per platform
+    const redirectTo = makeRedirectUri({ path: 'auth/callback' });
+    console.log('[Google OAuth] redirectTo =', redirectTo); // ← 터미널/콘솔에서 이 값 확인!
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -128,6 +130,8 @@ export default function App() {
       if (accessToken && refreshToken) {
         await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
       }
+    } else {
+      console.log('[Google OAuth] result:', result.type); // 'cancel' or 'dismiss' 이면 redirect 실패
     }
   };
 

@@ -6,7 +6,7 @@ import axios from 'axios';
 import { User, Run, RunStats, Course, Battle } from '../types';
 
 // Change this to your backend URL
-const API_BASE = 'http://192.168.25.105:3000/api';
+const API_BASE = 'http://192.168.29.216:3000/api';
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -67,9 +67,8 @@ export const courseService = {
     preferredDistance?: number,
     options?: {
       routeStyle?: 'one_way' | 'round_trip';
-      userLat?: number;
-      userLng?: number;
       radiusKm?: number;
+      province?: string; // e.g. '서울특별시', '경기도', '전라남도', '전체'
     }
   ) => {
     const res = await api.post('/courses/recommend', {

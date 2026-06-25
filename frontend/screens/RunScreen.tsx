@@ -109,6 +109,17 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
     };
   }, []);
 
+  const handleMapReady = () => {
+    if (activeRoute.length > 0) {
+      setTimeout(() => {
+        mapRef.current?.fitToCoordinates(activeRoute, {
+          edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
+          animated: true,
+        });
+      }, 300);
+    }
+  };
+
   const requestLocationPermission = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -123,12 +134,14 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
           longitude: loc.coords.longitude,
         };
         setCurrentLocation(point);
-        mapRef.current?.animateToRegion({
-          latitude: point.latitude,
-          longitude: point.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        }, 1000);
+        if (activeRoute.length === 0) {
+          mapRef.current?.animateToRegion({
+            latitude: point.latitude,
+            longitude: point.longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }, 1000);
+        }
       } else {
         setLocationPermission('denied');
         Alert.alert(
@@ -517,7 +530,29 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
         }}
         showsUserLocation={locationPermission === 'granted'}
         followsUserLocation={isRunning && !isPaused}
+        onMapReady={handleMapReady}
       >
+        {activeRoute.length > 1 && (
+          <Polyline
+            coordinates={activeRoute}
+            strokeColor="#3F41C2"
+            strokeWidth={5}
+          />
+        )}
+        {activeRoute.length > 0 && (
+          <>
+            <Marker coordinate={activeRoute[0]}>
+              <View style={styles.startMarker}>
+                <Text style={styles.markerText}>S</Text>
+              </View>
+            </Marker>
+            <Marker coordinate={activeRoute[activeRoute.length - 1]}>
+              <View style={styles.endMarker}>
+                <Text style={styles.markerText}>E</Text>
+              </View>
+            </Marker>
+          </>
+        )}
         {trackedRoute.length > 1 && (
           <Polyline
             coordinates={trackedRoute}
@@ -1179,5 +1214,26 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  startMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#5B5FEF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  endMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FF6B6B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
   },
 });

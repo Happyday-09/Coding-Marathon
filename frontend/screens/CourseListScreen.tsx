@@ -44,9 +44,35 @@ const stripMarkdown = (text: string): string =>
 
 const DISTANCE_OPTIONS = [3, 5, 7, 10];
 const RADIUS_OPTIONS = [5, 10, 20];
-const SAMPLE_LOCATION = {
-  userLat: 37.5665,
-  userLng: 126.978,
+
+const matchSimplifiedProvince = (canonical: string | null | undefined, simplified: string): boolean => {
+  const safeCanonical = canonical || '전체';
+  if (safeCanonical === '전체' && simplified === '전체') return true;
+  if (safeCanonical === '전체' || simplified === '전체') return false;
+
+  const provinceMap: Record<string, string[]> = {
+    '서울': ['서울', '서울특별시', '서울별시'],
+    '경기': ['경기', '경기도'],
+    '인천': ['인천', '인천광역시'],
+    '강원': ['강원', '강원도', '강원특별자치도'],
+    '충북': ['충북', '충청북도'],
+    '충남': ['충남', '충청남도'],
+    '대전': ['대전', '대전광역시'],
+    '세종': ['세종', '세종특별자치시'],
+    '전북': ['전북', '전라북도', '전북특별자치도'],
+    '전남': ['전남', '전라남도'],
+    '광주': ['광주', '광주광역시'],
+    '경북': ['경북', '경상북도', '경상도'],
+    '경남': ['경남', '경상남도'],
+    '대구': ['대구', '대구광역시'],
+    '울산': ['울산', '울산광역시'],
+    '부산': ['부산', '부산광역시'],
+    '제주': ['제주', '제주특별자치도', '제주도'],
+  };
+
+  const aliases = provinceMap[simplified];
+  if (!aliases) return false;
+  return aliases.some(alias => safeCanonical.includes(alias));
 };
 
 export default function CourseListScreen({ user, navigation }: CourseListScreenProps) {
@@ -87,7 +113,7 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
 
   useEffect(() => {
     loadCourses();
-  }, [selectedDistance, selectedRouteStyle, selectedRadius]);
+  }, [selectedDistance, selectedRouteStyle, selectedRadius, selectedRegion]);
 
   const loadCourses = async () => {
     try {
@@ -97,7 +123,7 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
         courseService.recommend(user.level, selectedDistance, {
           routeStyle: selectedRouteStyle,
           radiusKm: selectedRadius,
-          ...SAMPLE_LOCATION,
+          province: selectedRegion,
         }),
       ]);
       if (allRes.success) setCourses(allRes.data);
@@ -105,18 +131,15 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
         setRecommendedCourses(recRes.data.recommendations || []);
         setAiMessage(recRes.data.aiMessage);
       }
-    } catch {
-      // ignore
+    } catch (error) {
+      console.error('loadCourses failed:', error);
     } finally {
       setLoading(false);
       setRecommendationLoading(false);
     }
   };
 
-  const provinces = useMemo(() => {
-    const list = courses.map((c) => c.province).filter((p): p is string => !!p);
-    return ['전체', ...Array.from(new Set(list)).sort()];
-  }, [courses]);
+  const provinces = ['전체'];
 
   const regionCounts = useMemo(() => {
     const counts: Record<string, number> = { 전체: courses.length };
@@ -224,17 +247,58 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
 
       <View style={styles.filterPanel}>
         <View style={styles.filterHeader}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.filterTitle}>추천 조건</Text>
-            <Text style={styles.filterCaption}>샘플 위치: 서울 시청 기준</Text>
+            <Text style={styles.filterCaption}>📍 선택된 지역: {selectedRegion}</Text>
           </View>
           {recommendationLoading ? <ActivityIndicator size="small" color="#5B5FEF" /> : null}
         </View>
 
+        <Text style={styles.filterLabel}>지역</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.innerProvinceScroll}
+          contentContainerStyle={styles.innerProvinceScrollContent}
+        >
+          {['전체', '서울', '경기', '인천', '강원', '충북', '충남', '대전', '세종', '전북', '전남', '광주', '경북', '경남', '대구', '울산', '부산', '제주'].map((prov) => {
+            const isSelected = matchSimplifiedProvince(selectedRegion, prov);
+            
+            const handlePress = () => {
+              if (prov === '전체') {
+                setSelectedRegion('전체');
+              } else {
+                const provinceMap: Record<string, string> = {
+                  '서울': '서울특별시',
+                  '경기': '경기도',
+                  '인천': '인천광역시',
+                  '강원': '강원도',
+                  '충북': '충청북도',
+                  '충남': '충청남도',
+                  '대전': '대전광역시',
+                  '세종': '세종특별자치시',
+                  '전북': '전라북도',
+                  '전남': '전라남도',
+                  '광주': '광주광역시',
+                  '경북': '경상북도',
+                  '경남': '경상남도',
+                  '대구': '대구광역시',
+                  '울산': '울산광역시',
+                  '부산': '부산광역시',
+                  '제주': '제주특별자치도',
+                };
+                setSelectedRegion(provinceMap[prov] || prov);
+              }
+            };
+
+            return renderOptionChip(prov, isSelected, handlePress);
+          })}
+        </ScrollView>
+
         <Text style={styles.filterLabel}>거리</Text>
         <View style={styles.optionRow}>
           {DISTANCE_OPTIONS.map((distance) =>
-              renderOptionChip(`${distance}km`, selectedDistance === distance, () => setSelectedDistance(distance))
+            renderOptionChip(`${distance}km`, selectedDistance === distance, () => setSelectedDistance(distance))
           )}
         </View>
 
@@ -247,7 +311,7 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
         <Text style={styles.filterLabel}>시작점 반경</Text>
         <View style={styles.optionRow}>
           {RADIUS_OPTIONS.map((radius) =>
-              renderOptionChip(`${radius}km`, selectedRadius === radius, () => setSelectedRadius(radius))
+            renderOptionChip(`${radius}km`, selectedRadius === radius, () => setSelectedRadius(radius))
           )}
         </View>
       </View>
@@ -277,6 +341,21 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
             <Text style={styles.sectionMeta}>{recommendedCourses.length}개</Text>
           </View>
           {recommendedCourses.map(renderRecommendedCourse)}
+        </View>
+      ) : !recommendationLoading && !loading ? (
+        <View style={styles.emptyRecommendCard}>
+          <View style={styles.emptyRecommendIconBg}>
+            <Ionicons name="map-outline" size={28} color="#5B5FEF" />
+          </View>
+          <Text style={styles.emptyRecommendTitle}>
+            추천 코스가 없습니다
+          </Text>
+          <Text style={styles.emptyRecommendDesc}>
+            {selectedRegion === '전체' ? '전국' : selectedRegion} 반경 {selectedRadius}km 내에{`\n`}해당하는 추천 코스가 없습니다
+          </Text>
+          <Text style={styles.emptyRecommendHint}>
+            반경을 넓히거나 다른 조건을 변경해보세요
+          </Text>
         </View>
       ) : null}
     </>
@@ -659,5 +738,50 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#8E8EA0',
     fontWeight: '500',
+  },
+  // Empty recommendation state
+  emptyRecommendCard: {
+    marginHorizontal: 26,
+    marginBottom: 14,
+    padding: 24,
+    borderRadius: 16,
+    backgroundColor: '#F7F7FF',
+    borderWidth: 1,
+    borderColor: '#E0E0FF',
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyRecommendIconBg: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#EEF0FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyRecommendTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1A1A2E',
+  },
+  emptyRecommendDesc: {
+    fontSize: 13,
+    color: '#5A5A6E',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  emptyRecommendHint: {
+    fontSize: 12,
+    color: '#8E8EA0',
+    marginTop: 4,
+  },
+  innerProvinceScroll: {
+    marginVertical: 4,
+    minHeight: 40,
+  },
+  innerProvinceScrollContent: {
+    paddingRight: 16,
+    gap: 8,
   },
 });

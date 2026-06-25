@@ -49,9 +49,100 @@ interface RecommendationCourse extends Course {
 
 const DEFAULT_DISTANCE_KM = 5;
 const DEFAULT_RADIUS_KM = 20;
-const MAX_RADIUS_KM = 50;
+const MAX_RADIUS_KM = 9999; // 전국 검색 지원
 const MAX_CANDIDATES_FOR_AI = 10;
 const FINAL_RECOMMENDATION_COUNT = 3;
+
+const PROVINCE_CENTERS: Record<string, { lat: number; lng: number }> = {
+  '서울특별시': { lat: 37.5665, lng: 126.978 },
+  '경기도': { lat: 37.2752, lng: 127.0095 },
+  '인천광역시': { lat: 37.456, lng: 126.705 },
+  '강원도': { lat: 37.8853, lng: 127.7298 },
+  '충청북도': { lat: 36.6358, lng: 127.4914 },
+  '충청남도': { lat: 36.7435, lng: 126.9241 },
+  '대전광역시': { lat: 36.3504, lng: 127.3848 },
+  '세종특별자치시': { lat: 36.4801, lng: 127.2890 },
+  '전라북도': { lat: 35.8242, lng: 127.1480 },
+  '전라남도': { lat: 34.8160, lng: 126.4629 },
+  '광주광역시': { lat: 35.1595, lng: 126.8526 },
+  '경상북도': { lat: 36.5760, lng: 128.5056 },
+  '경상남도': { lat: 35.2376, lng: 128.6924 },
+  '대구광역시': { lat: 35.8714, lng: 128.6014 },
+  '울산광역시': { lat: 35.5389, lng: 129.3114 },
+  '부산광역시': { lat: 35.1798, lng: 129.0750 },
+  '제주특별자치도': { lat: 33.4996, lng: 126.5312 },
+};
+
+const matchesProvince = (dbProvince: string | null, target: string): boolean => {
+  if (!dbProvince) return false;
+  
+  const targetLower = target.trim();
+  if (targetLower === '전체' || targetLower === '') return true;
+
+  const provinceMap: Record<string, string[]> = {
+    '서울': ['서울', '서울특별시', '서울별시'],
+    '경기': ['경기', '경기도'],
+    '인천': ['인천', '인천광역시'],
+    '강원': ['강원', '강원도', '강원특별자치도'],
+    '충북': ['충북', '충청북도'],
+    '충남': ['충남', '충청남도'],
+    '대전': ['대전', '대전광역시'],
+    '세종': ['세종', '세종특별자치시'],
+    '전북': ['전북', '전라북도', '전북특별자치도'],
+    '전남': ['전남', '전라남도'],
+    '광주': ['광주', '광주광역시'],
+    '경북': ['경북', '경상북도', '경상도'],
+    '경남': ['경남', '경상남도'],
+    '대구': ['대구', '대구광역시'],
+    '울산': ['울산', '울산광역시'],
+    '부산': ['부산', '부산광역시'],
+    '제주': ['제주', '제주특별자치도', '제주도'],
+  };
+
+  let matchedKey = targetLower;
+  for (const [key, aliases] of Object.entries(provinceMap)) {
+    if (key === targetLower || aliases.includes(targetLower)) {
+      matchedKey = key;
+      break;
+    }
+  }
+
+  const allowed = provinceMap[matchedKey];
+  if (!allowed) {
+    return dbProvince.includes(targetLower);
+  }
+
+  return allowed.some(val => dbProvince.includes(val));
+};
+
+const getProvinceCenter = (province: string | undefined): { lat: number; lng: number } => {
+  const fallback = { lat: 37.5665, lng: 126.978 }; // Seoul City Hall
+  if (!province || province === '전체') return fallback;
+
+  const targetLower = province.trim();
+  const provinceMap: Record<string, string> = {
+    '서울': '서울특별시', '서울특별시': '서울특별시', '서울별시': '서울특별시',
+    '경기': '경기도', '경기도': '경기도',
+    '인천': '인천광역시', '인천광역시': '인천광역시',
+    '강원': '강원도', '강원도': '강원도', '강원특별자치도': '강원도',
+    '충북': '충청북도', '충청북도': '충청북도',
+    '충남': '충청남도', '충청남도': '충청남도',
+    '대전': '대전광역시', '대전광역시': '대전광역시',
+    '세종': '세종특별자치시', '세종특별자치시': '세종특별자치시',
+    '전북': '전라북도', '전라북도': '전라북도', '전북특별자치도': '전라북도',
+    '전남': '전라남도', '전라남도': '전라남도',
+    '광주': '광주광역시', '광주광역시': '광주광역시',
+    '경북': '경상북도', '경상북도': '경상북도', '경상도': '경상북도',
+    '경남': '경상남도', '경상남도': '경상남도',
+    '대구': '대구광역시', '대구광역시': '대구광역시',
+    '울산': '울산광역시', '울산광역시': '울산광역시',
+    '부산': '부산광역시', '부산광역시': '부산광역시',
+    '제주': '제주특별자치도', '제주특별자치도': '제주특별자치도', '제주도': '제주특별자치도',
+  };
+
+  const canonical = provinceMap[targetLower] || targetLower;
+  return PROVINCE_CENTERS[canonical] || fallback;
+};
 
 const toRad = (value: number): number => value * (Math.PI / 180);
 
@@ -230,39 +321,37 @@ const scoreCourse = (
 };
 
 const fetchCandidateRows = async (
-  userLat: number | undefined,
-  userLng: number | undefined,
+  province: string | undefined,
+  center: { lat: number; lng: number },
   radiusKm: number
 ): Promise<CourseCardRow[]> => {
-  if (userLat !== undefined && userLng !== undefined) {
-    const { data, error } = await supabase.rpc('nearby_courses', {
-      user_lat: userLat,
-      user_lng: userLng,
-      radius_m: Math.round(radiusKm * 1000),
-      min_distance_m: null,
-      max_distance_m: null,
-      difficulty_filter: null,
-      limit_count: 100,
-    });
+  const { data, error } = await supabase.from('course_cards').select('*').limit(500);
+  if (error) throw new Error(`course_cards query failed: ${error.message}`);
+  const rows = (data || []) as CourseCardRow[];
 
-    if (error) throw new Error(`nearby_courses failed: ${error.message}`);
-    return (data || []) as CourseCardRow[];
+  if (province && province !== '전체') {
+    return rows.filter((row) => matchesProvince(row.province, province));
   }
 
-  const { data, error } = await supabase.from('course_cards').select('*').limit(100);
-  if (error) throw new Error(`course_cards query failed: ${error.message}`);
-  return (data || []) as CourseCardRow[];
+  const centerPoint = { latitude: center.lat, longitude: center.lng };
+  return rows.filter((row) => {
+    const coordinates = parseGeoJsonLineString(row.route_geojson);
+    if (coordinates.length === 0) return false;
+    const dist = distanceM(centerPoint, coordinates[0]);
+    return dist <= radiusKm * 1000;
+  });
 };
 
 const buildFallbackMessage = (
   level: Level,
   targetKm: number,
   routeStyle: RouteStyle,
-  hasLocation: boolean
+  province: string | undefined
 ): string => {
   const styleText = routeStyle === 'round_trip' ? '왕복' : '편도';
   const levelText = level === 'beginner' ? '초보' : level === 'intermediate' ? '중급' : '상급';
-  const locationTextValue = hasLocation ? '현재 위치와 가까운 출발점을 우선으로' : '난이도와 거리 조건을 기준으로';
+  const hasProvince = province && province !== '전체';
+  const locationTextValue = hasProvince ? `${province} 코스를 우선으로` : '전국을 대상으로 난이도와 거리 조건을 기준으로';
   return `${levelText} 러너에게 맞춰 ${locationTextValue} ${targetKm}km ${styleText} 코스를 골랐습니다. 긴 코스는 전체가 아니라 조건에 맞는 일부 구간만 달리도록 잘라서 추천합니다.`;
 };
 
@@ -271,12 +360,12 @@ export const recommendCoursesWithSlicing = async (req: Request, res: Response): 
   const targetKm = normalizeDistanceKm(req.body.preferredDistance ?? req.body.distanceKm);
   const routeStyle = normalizeRouteStyle(req.body.routeStyle);
   const radiusKm = normalizeRadiusKm(req.body.radiusKm, req.body.radiusM);
-  const userLat = parseNumber(req.body.userLat ?? req.body.latitude);
-  const userLng = parseNumber(req.body.userLng ?? req.body.longitude);
-  const hasLocation = userLat !== undefined && userLng !== undefined;
+  const province = typeof req.body.province === 'string' ? req.body.province : undefined;
+  
+  const center = getProvinceCenter(province);
 
   try {
-    const rows = await fetchCandidateRows(userLat, userLng, radiusKm);
+    const rows = await fetchCandidateRows(province, center, radiusKm);
 
     const scored = rows
       .map((row) => {
@@ -284,8 +373,9 @@ export const recommendCoursesWithSlicing = async (req: Request, res: Response): 
         const sliced = sliceRoute(coordinates, targetKm, routeStyle);
         if (!sliced) return null;
 
-        const userToStartM =
-          typeof row.user_to_start_m === 'number' ? row.user_to_start_m : undefined;
+        const userToStartM = coordinates.length > 0
+          ? distanceM({ latitude: center.lat, longitude: center.lng }, coordinates[0])
+          : undefined;
         const score = scoreCourse(row, level, targetKm, routeStyle, userToStartM);
         if (!Number.isFinite(score)) return null;
 
@@ -343,7 +433,7 @@ export const recommendCoursesWithSlicing = async (req: Request, res: Response): 
     );
 
     let finalCourses = topCandidates.slice(0, FINAL_RECOMMENDATION_COUNT).map((item) => item.course);
-    let aiMessage = buildFallbackMessage(level, targetKm, routeStyle, hasLocation);
+    let aiMessage = buildFallbackMessage(level, targetKm, routeStyle, province);
 
     if (aiResult) {
       const byId = new Map(topCandidates.map((item) => [item.course.id, item.course]));
@@ -375,8 +465,7 @@ export const recommendCoursesWithSlicing = async (req: Request, res: Response): 
           preferredDistance: targetKm,
           routeStyle,
           radiusKm,
-          userLat,
-          userLng,
+          province,
         },
       },
       message: '추천 코스 조회 완료',
