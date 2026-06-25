@@ -45,9 +45,16 @@ export default function App() {
       email,
       nickname: profile?.nickname || email.split('@')[0],
       level: (profile?.running_level as 'beginner' | 'intermediate' | 'advanced') || 'beginner',
-      weeklyGoalKm: 20,
+      weeklyGoalKm: profile?.weekly_goal_km || 20,
       createdAt: profile?.created_at || new Date().toISOString(),
     });
+  };
+
+  const reloadUserProfile = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await loadUserProfile(session.user.id, session.user.email || '');
+    }
   };
 
   const handleLogin = async (email: string, password: string) => {
@@ -145,7 +152,7 @@ export default function App() {
       <StatusBar style="dark" />
       {user ? (
         <NavigationContainer>
-          <AppNavigator user={user} onLogout={handleLogout} />
+          <AppNavigator user={user} onLogout={handleLogout} reloadUserProfile={reloadUserProfile} />
         </NavigationContainer>
       ) : (
         <LoginScreen

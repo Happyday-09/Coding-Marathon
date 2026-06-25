@@ -18,6 +18,7 @@ import { supabase } from '../lib/supabase';
 type Props = {
   navigation: StackNavigationProp<RootStackParamList, 'PersonalParameters'>;
   userId: string;
+  onSaveSuccess?: () => void;
 };
 
 interface RunningParams {
@@ -40,7 +41,7 @@ const LEVEL_LABELS: Record<string, string> = {
   advanced: '고급',
 };
 
-export default function PersonalParametersScreen({ navigation, userId }: Props) {
+export default function PersonalParametersScreen({ navigation, userId, onSaveSuccess }: Props) {
   const [params, setParams] = useState<RunningParams>({
     age: '',
     height: '',
@@ -109,7 +110,13 @@ export default function PersonalParametersScreen({ navigation, userId }: Props) 
       ]);
     } else {
       Alert.alert('저장 완료', '개인 파라미터가 저장됐습니다.', [
-        { text: '확인', onPress: () => navigation.goBack() },
+        {
+          text: '확인',
+          onPress: () => {
+            if (onSaveSuccess) onSaveSuccess();
+            navigation.goBack();
+          },
+        },
       ]);
     }
   };

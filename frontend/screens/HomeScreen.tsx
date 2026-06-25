@@ -46,6 +46,8 @@ export default function HomeScreen({ user, navigation }: HomeScreenProps) {
   const [routePoints, setRoutePoints] = useState<{ latitude: number; longitude: number }[]>([]);
   const detailMapRef = useRef<MapView>(null);
 
+  const [weeklyGoal, setWeeklyGoal] = useState<number>(user.weeklyGoalKm || 20);
+
   // ── Calendar state ──────────────────────────────────────
   const todayObj = new Date();
   const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
@@ -90,6 +92,16 @@ export default function HomeScreen({ user, navigation }: HomeScreenProps) {
       .order('started_at', { ascending: false })
       .limit(10);
     if (data) setRuns(data);
+
+    // Fetch latest weekly goal from profiles table
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('weekly_goal_km')
+      .eq('id', user.id)
+      .single();
+    if (profile && profile.weekly_goal_km !== null) {
+      setWeeklyGoal(profile.weekly_goal_km);
+    }
   };
 
   const loadCalendarRuns = async () => {
@@ -170,14 +182,15 @@ export default function HomeScreen({ user, navigation }: HomeScreenProps) {
   // ── Weekly stats ─────────────────────────────────────────
   const totalKmThisWeek = (() => {
     const start = new Date();
-    start.setDate(start.getDate() - start.getDay());
+    const day = start.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    start.setDate(start.getDate() + diff);
     start.setHours(0, 0, 0, 0);
     return runs
       .filter((r) => new Date(r.started_at) >= start)
       .reduce((s, r) => s + r.distance_m / 1000, 0);
   })();
 
-  const weeklyGoal = user.weeklyGoalKm || 20;
   const weeklyLeft = Math.max(0, weeklyGoal - totalKmThisWeek);
   const weeklyProgress = weeklyGoal > 0 ? Math.min(1, totalKmThisWeek / weeklyGoal) : 0;
 

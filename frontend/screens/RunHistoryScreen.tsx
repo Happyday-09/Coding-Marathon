@@ -71,6 +71,7 @@ export default function RunHistoryScreen({ navigation, userId }: Props) {
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('week');
+  const [weeklyGoalKm, setWeeklyGoalKm] = useState<number>(20);
 
   useFocusEffect(
     useCallback(() => {
@@ -79,6 +80,16 @@ export default function RunHistoryScreen({ navigation, userId }: Props) {
   );
 
   const loadRuns = async () => {
+    // Fetch weekly goal from profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('weekly_goal_km')
+      .eq('id', userId)
+      .single();
+    if (profile && profile.weekly_goal_km !== null) {
+      setWeeklyGoalKm(profile.weekly_goal_km);
+    }
+
     const { data, error } = await supabase
       .from('runs')
       .select('id, distance_m, duration_sec, avg_pace_sec_per_km, calories_kcal, started_at, ended_at')
@@ -97,7 +108,9 @@ export default function RunHistoryScreen({ navigation, userId }: Props) {
     const now = new Date();
     if (period === 'week') {
       const start = new Date(now);
-      start.setDate(now.getDate() - now.getDay()); // 이번 주 일요일
+      const day = now.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      start.setDate(now.getDate() + diff); // 이번 주 월요일
       start.setHours(0, 0, 0, 0);
       return runs.filter((r) => new Date(r.started_at) >= start);
     }
@@ -187,6 +200,33 @@ export default function RunHistoryScreen({ navigation, userId }: Props) {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Weekly Goal Progress Card */}
+        {period === 'week' && (
+          <View style={styles.weekGoalCard}>
+            <View style={styles.weekGoalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="flag-outline" size={16} color="#1A1A2E" />
+                <Text style={styles.weekGoalLabel}>주간 목표</Text>
+              </View>
+              <Text style={styles.weekGoalValue}>{weeklyGoalKm} km</Text>
+            </View>
+            <View style={styles.progressBarBg}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { width: `${Math.min(1, stats.totalKm / (weeklyGoalKm || 1)) * 100}%` as any }
+                ]}
+              />
+            </View>
+            <View style={styles.progressLabels}>
+              <Text style={styles.progressDone}>{stats.totalKm.toFixed(1)} km 완료</Text>
+              <Text style={styles.progressLeft}>
+                {Math.max(0, weeklyGoalKm - stats.totalKm).toFixed(1)} km 남음
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Summary Stats */}
         <View style={styles.summaryGrid}>
@@ -389,4 +429,58 @@ const styles = StyleSheet.create({
   runCal: { fontSize: 11, color: '#FF9500', marginTop: 2 },
   empty: { alignItems: 'center', paddingVertical: 30, gap: 8 },
   emptyText: { fontSize: 14, color: '#8E8EA0' },
+  weekGoalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#EBEBF0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  weekGoalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  weekGoalLabel: {
+    fontSize: 15,
+    color: '#1A1A2E',
+    fontWeight: '600',
+  },
+  weekGoalValue: {
+    fontSize: 15,
+    color: '#5B5FEF',
+    fontWeight: '700',
+  },
+  progressBarBg: {
+    height: 8,
+    backgroundColor: '#EBEBF0',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBarFill: {
+    height: 8,
+    backgroundColor: '#5B5FEF',
+    borderRadius: 4,
+  },
+  progressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  progressDone: {
+    fontSize: 12,
+    color: '#1A1A2E',
+    fontWeight: '500',
+  },
+  progressLeft: {
+    fontSize: 12,
+    color: '#8E8EA0',
+  },
 });

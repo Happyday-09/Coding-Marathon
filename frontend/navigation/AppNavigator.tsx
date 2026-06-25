@@ -26,9 +26,15 @@ const Stack = createStackNavigator<RootStackParamList>();
 interface AppNavigatorProps {
   user: User;
   onLogout: () => void;
+  reloadUserProfile: () => Promise<void>;
 }
 
-function TabNavigator({ user, onLogout }: AppNavigatorProps) {
+interface TabNavigatorProps {
+  user: User;
+  onLogout: () => void;
+}
+
+function TabNavigator({ user, onLogout }: TabNavigatorProps) {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -76,7 +82,7 @@ function TabNavigator({ user, onLogout }: AppNavigatorProps) {
   );
 }
 
-export default function AppNavigator({ user, onLogout }: AppNavigatorProps) {
+export default function AppNavigator({ user, onLogout, reloadUserProfile }: AppNavigatorProps) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main">
@@ -92,6 +98,7 @@ export default function AppNavigator({ user, onLogout }: AppNavigatorProps) {
           <PersonalParametersScreen
             {...props}
             userId={user.id}
+            onSaveSuccess={reloadUserProfile}
           />
         )}
       </Stack.Screen>
