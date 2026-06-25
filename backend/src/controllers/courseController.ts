@@ -37,7 +37,7 @@ export const getAllCourses = async (_req: Request, res: Response): Promise<void>
     const { data: coursesList, error: listError } = await supabase
       .from('courses')
       .select('id')
-      .eq('source_type', 'public_standard');
+      .eq('source_type', 'beagle');
 
     if (listError || !coursesList) {
       res.status(500).json({
@@ -79,6 +79,8 @@ export const getAllCourses = async (_req: Request, res: Response): Promise<void>
       estimatedTime: Math.round(c.estimated_time_sec / 60),
       coordinates: parseGeoJsonLineString(c.route_geojson),
       tags: c.tags || [],
+      province: c.province || '',
+      city: c.city || '',
     }));
 
     res.status(200).json({
@@ -118,6 +120,8 @@ export const getCourseById = async (req: Request, res: Response): Promise<void> 
       estimatedTime: Math.round(c.estimated_time_sec / 60),
       coordinates: parseGeoJsonLineString(c.route_geojson),
       tags: c.tags || [],
+      province: c.province || '',
+      city: c.city || '',
     };
 
     res.status(200).json({
@@ -141,7 +145,7 @@ export const recommendCourse = async (req: Request, res: Response): Promise<void
     const { data: coursesList, error: listError } = await supabase
       .from('courses')
       .select('id')
-      .eq('source_type', 'public_standard');
+      .eq('source_type', 'beagle');
 
     if (listError || !coursesList) {
       res.status(500).json({
@@ -188,6 +192,8 @@ export const recommendCourse = async (req: Request, res: Response): Promise<void
       estimatedTime: Math.round(c.estimated_time_sec / 60),
       coordinates: parseGeoJsonLineString(c.route_geojson),
       tags: c.tags || [],
+      province: c.province || '',
+      city: c.city || '',
     }));
 
     // Filter by difficulty matching user level

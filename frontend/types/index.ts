@@ -39,6 +39,8 @@ export interface Course {
   estimatedTime: number;
   coordinates: RoutePoint[];
   tags: string[];
+  province?: string;
+  city?: string;
 }
 
 export interface Battle {
@@ -75,9 +77,18 @@ export type RootStackParamList = {
   CourseDetail: { courseId: string };
 };
 
+export type RunTabParams = {
+  battleId?: string;
+  challengeMode?: boolean;
+  targetDistance?: number;
+  targetDuration?: number;
+  challengerName?: string;
+  courseCoordinates?: RoutePoint[];
+};
+
 export type BottomTabParamList = {
   Home: undefined;
-  Run: undefined;
+  Run: RunTabParams | undefined;
   Courses: undefined;
   Battle: undefined;
   Profile: undefined;

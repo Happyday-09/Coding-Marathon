@@ -39,6 +39,8 @@ export interface Course {
   estimatedTime: number;  // minutes
   coordinates: RoutePoint[];
   tags: string[];
+  province?: string;
+  city?: string;
 }
 
 export interface Battle {
