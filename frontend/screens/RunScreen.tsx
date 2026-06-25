@@ -55,6 +55,7 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
   const targetDistance = route?.params?.targetDistance;
   const targetDuration = route?.params?.targetDuration;
   const challengerName = route?.params?.challengerName;
+  const courseCoordinates = route?.params?.courseCoordinates;
 
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -65,6 +66,33 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
   const [trackedRoute, setTrackedRoute] = useState<RoutePoint[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mapRef = useRef<MapView>(null);
+
+  // Dynamically choose route coordinates based on route parameters
+  const activeRoute = (courseCoordinates && courseCoordinates.length > 0)
+    ? courseCoordinates
+    : simulatedRoute;
+
+  // Automatically center map and reset state when new parameters are received
+  useEffect(() => {
+    if (activeRoute && activeRoute.length > 0 && mapRef.current) {
+      const startPoint = activeRoute[0];
+      mapRef.current.animateToRegion({
+        latitude: startPoint.latitude,
+        longitude: startPoint.longitude,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      }, 500);
+
+      // Reset state for new run
+      setTrackedRoute([]);
+      setCurrentRouteIndex(0);
+      setDistance(0);
+      setCalories(0);
+      setElapsed(0);
+      setIsRunning(false);
+      setIsPaused(false);
+    }
+  }, [route?.params]);
 
   // Ghost Competitor Progress (in km)
   // Challenger runs targetDistance over targetDuration seconds.
@@ -94,8 +122,8 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
   // Simulate movement every 3 seconds
   useEffect(() => {
     if (isRunning && !isPaused && elapsed > 0 && elapsed % 3 === 0) {
-      if (currentRouteIndex < simulatedRoute.length) {
-        const nextPoint = simulatedRoute[currentRouteIndex];
+      if (currentRouteIndex < activeRoute.length) {
+        const nextPoint = activeRoute[currentRouteIndex];
         setTrackedRoute((prev) => [...prev, nextPoint]);
         setCurrentRouteIndex((prev) => prev + 1);
 
@@ -152,7 +180,7 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
       setDistance(0);
       setCalories(0);
       setCurrentRouteIndex(0);
-      setTrackedRoute([simulatedRoute[0]]);
+      setTrackedRoute([activeRoute[0]]);
     } else {
       // Stop button clicked manually
       setIsRunning(false);
@@ -252,7 +280,7 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
 
   const currentPosition = trackedRoute.length > 0
     ? trackedRoute[trackedRoute.length - 1]
-    : simulatedRoute[0];
+    : activeRoute[0];
 
   return (
     <View style={styles.container}>

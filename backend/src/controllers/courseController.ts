@@ -34,7 +34,32 @@ const mapUiDifficultyToDb = (level: string): string[] => {
 // GET /api/courses
 export const getAllCourses = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const { data: coursesData, error } = await supabase.from('course_cards').select('*');
+    const { data: coursesList, error: listError } = await supabase
+      .from('courses')
+      .select('id')
+      .eq('source_type', 'public_standard');
+
+    if (listError || !coursesList) {
+      res.status(500).json({
+        success: false,
+        error: '코스 목록을 불러오지 못했습니다.',
+      } as ApiResponse<null>);
+      return;
+    }
+
+    const validIds = coursesList.map((c) => c.id);
+    if (validIds.length === 0) {
+      res.status(200).json({
+        success: true,
+        data: [],
+      } as ApiResponse<Course[]>);
+      return;
+    }
+
+    const { data: coursesData, error } = await supabase
+      .from('course_cards')
+      .select('*')
+      .in('id', validIds);
 
     if (error || !coursesData) {
       res.status(500).json({
@@ -113,7 +138,36 @@ export const recommendCourse = async (req: Request, res: Response): Promise<void
   const { level, preferredDistance } = req.body;
 
   try {
-    const { data: coursesData, error } = await supabase.from('course_cards').select('*');
+    const { data: coursesList, error: listError } = await supabase
+      .from('courses')
+      .select('id')
+      .eq('source_type', 'public_standard');
+
+    if (listError || !coursesList) {
+      res.status(500).json({
+        success: false,
+        error: '추천 코스 조회에 실패했습니다.',
+      } as ApiResponse<null>);
+      return;
+    }
+
+    const validIds = coursesList.map((c) => c.id);
+    if (validIds.length === 0) {
+      res.status(200).json({
+        success: true,
+        data: {
+          recommendations: [],
+          aiMessage: '추천할 수 있는 코스가 없습니다.',
+        },
+        message: '추천 코스가 존재하지 않습니다.',
+      } as ApiResponse<{ recommendations: Course[]; aiMessage: string }>);
+      return;
+    }
+
+    const { data: coursesData, error } = await supabase
+      .from('course_cards')
+      .select('*')
+      .in('id', validIds);
 
     if (error || !coursesData) {
       res.status(500).json({
