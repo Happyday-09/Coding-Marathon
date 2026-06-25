@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Course } from '../types';
 import { courseService } from '../services/api';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const difficultyColors: Record<string, string> = {
   easy: '#34C759',
@@ -57,6 +57,41 @@ export default function CourseDetailScreen({ route, navigation }: CourseDetailSc
     }
   };
 
+  const getRegionForCoordinates = (points: { latitude: number; longitude: number }[]) => {
+    if (!points || points.length === 0) {
+      return {
+        latitude: 37.5665,
+        longitude: 126.9780,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      };
+    }
+
+    let minLat = points[0].latitude;
+    let maxLat = points[0].latitude;
+    let minLng = points[0].longitude;
+    let maxLng = points[0].longitude;
+
+    points.forEach((p) => {
+      minLat = Math.min(minLat, p.latitude);
+      maxLat = Math.max(maxLat, p.latitude);
+      minLng = Math.min(minLng, p.longitude);
+      maxLng = Math.max(maxLng, p.longitude);
+    });
+
+    const midLat = (minLat + maxLat) / 2;
+    const midLng = (minLng + maxLng) / 2;
+    const latDelta = Math.max((maxLat - minLat) * 1.5, 0.012);
+    const lngDelta = Math.max((maxLng - minLng) * 1.5, 0.012);
+
+    return {
+      latitude: midLat,
+      longitude: midLng,
+      latitudeDelta: latDelta,
+      longitudeDelta: lngDelta,
+    };
+  };
+
   if (loading || !course) {
     return (
       <SafeAreaView style={styles.container}>
@@ -65,19 +100,26 @@ export default function CourseDetailScreen({ route, navigation }: CourseDetailSc
     );
   }
 
-  const midPoint = course.coordinates[Math.floor(course.coordinates.length / 2)];
+  const initialRegion = getRegionForCoordinates(course.coordinates);
+
+  const handleStartRun = () => {
+    navigation.navigate('Main', {
+      screen: 'Run',
+      params: {
+        courseId: course.id,
+        courseName: course.name,
+        courseCoordinates: course.coordinates,
+        targetDistance: course.distance,
+      },
+    });
+  };
 
   return (
     <View style={styles.container}>
       {/* Map */}
       <MapView
         style={styles.map}
-        initialRegion={{
-          latitude: midPoint.latitude,
-          longitude: midPoint.longitude,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        }}
+        initialRegion={initialRegion}
       >
         <Polyline
           coordinates={course.coordinates}
@@ -147,7 +189,11 @@ export default function CourseDetailScreen({ route, navigation }: CourseDetailSc
             ))}
           </View>
 
-          <TouchableOpacity style={styles.startRunButton} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.startRunButton}
+            activeOpacity={0.8}
+            onPress={handleStartRun}
+          >
             <Ionicons name="play" size={20} color="#FFFFFF" />
             <Text style={styles.startRunText}>이 코스로 러닝 시작</Text>
           </TouchableOpacity>
@@ -164,7 +210,7 @@ const styles = StyleSheet.create({
   },
   map: {
     width: width,
-    height: 300,
+    height: height * 0.58,
   },
   backButtonContainer: {
     position: 'absolute',
@@ -208,9 +254,14 @@ const styles = StyleSheet.create({
   infoCard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -20,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    marginTop: -24,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 10,
   },
   infoContent: {
     padding: 24,

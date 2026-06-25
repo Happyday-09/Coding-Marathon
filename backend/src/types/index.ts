@@ -56,6 +56,7 @@ export interface Battle {
   winnerId?: string;           // Winner's user id
   challengerRunId: string;     // The run record being challenged
   opponentRunId?: string;      // The opponent's run record answering the challenge
+  challengerRoute?: RoutePoint[]; // Challenger's run path coordinates
   createdAt: string;
 }
 

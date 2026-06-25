@@ -4,10 +4,21 @@
 
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
-import { Battle, ApiResponse } from '../types';
+import { Battle, ApiResponse, RoutePoint } from '../types';
 
 // Helper to map DB record to TypeScript Battle model
 const mapDbBattleToModel = (b: any): Battle => {
+  let challengerRoute: RoutePoint[] | undefined = undefined;
+  
+  if (b.challenger_run && b.challenger_run.run_points) {
+    challengerRoute = b.challenger_run.run_points
+      .sort((x: any, y: any) => x.seq - y.seq)
+      .map((p: any) => ({
+        latitude: p.lat,
+        longitude: p.lng,
+      }));
+  }
+
   return {
     id: b.id,
     challengerId: b.challenger_id,
@@ -23,6 +34,7 @@ const mapDbBattleToModel = (b: any): Battle => {
     winnerId: b.winner_id || undefined,
     challengerRunId: b.challenger_run_id,
     opponentRunId: b.opponent_run_id || undefined,
+    challengerRoute,
     createdAt: b.created_at,
   };
 };
@@ -37,7 +49,10 @@ export const getBattlesByUser = async (req: Request, res: Response): Promise<voi
       .select(`
         *,
         challenger:profiles!challenger_id(nickname),
-        opponent:profiles!opponent_id(nickname)
+        opponent:profiles!opponent_id(nickname),
+        challenger_run:runs!challenger_run_id(
+          run_points(lng, lat, seq)
+        )
       `)
       .or(`challenger_id.eq.${userId},opponent_id.eq.${userId}`)
       .order('created_at', { ascending: false });
@@ -121,13 +136,16 @@ export const createBattle = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // 3. Select complete record with profiles nickname
+    // 3. Select complete record with profiles nickname and route points
     const { data: fullBattle, error: selectError } = await supabase
       .from('battles')
       .select(`
         *,
         challenger:profiles!challenger_id(nickname),
-        opponent:profiles!opponent_id(nickname)
+        opponent:profiles!opponent_id(nickname),
+        challenger_run:runs!challenger_run_id(
+          run_points(lng, lat, seq)
+        )
       `)
       .eq('id', insertedData.id)
       .single();
@@ -189,7 +207,10 @@ export const acceptBattle = async (req: Request, res: Response): Promise<void> =
       .select(`
         *,
         challenger:profiles!challenger_id(nickname),
-        opponent:profiles!opponent_id(nickname)
+        opponent:profiles!opponent_id(nickname),
+        challenger_run:runs!challenger_run_id(
+          run_points(lng, lat, seq)
+        )
       `)
       .single();
 
@@ -289,7 +310,10 @@ export const completeBattle = async (req: Request, res: Response): Promise<void>
       .select(`
         *,
         challenger:profiles!challenger_id(nickname),
-        opponent:profiles!opponent_id(nickname)
+        opponent:profiles!opponent_id(nickname),
+        challenger_run:runs!challenger_run_id(
+          run_points(lng, lat, seq)
+        )
       `)
       .single();
 

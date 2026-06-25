@@ -110,6 +110,7 @@ export default function BattleScreen({ user, navigation }: BattleScreenProps) {
           targetDistance: battle.targetDistance,
           targetDuration: battle.targetDuration,
           challengerName: battle.challengerName,
+          courseCoordinates: battle.challengerRoute,
         });
       }
     } catch {
@@ -124,6 +125,7 @@ export default function BattleScreen({ user, navigation }: BattleScreenProps) {
       targetDistance: battle.targetDistance,
       targetDuration: battle.targetDuration,
       challengerName: battle.challengerName,
+      courseCoordinates: battle.challengerRoute,
     });
   };
 
