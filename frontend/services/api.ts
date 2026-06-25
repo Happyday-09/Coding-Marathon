@@ -62,8 +62,21 @@ export const courseService = {
     const res = await api.get(`/courses/${id}`);
     return res.data;
   },
-  recommend: async (level: string, preferredDistance?: number) => {
-    const res = await api.post('/courses/recommend', { level, preferredDistance });
+  recommend: async (
+    level: string,
+    preferredDistance?: number,
+    options?: {
+      routeStyle?: 'one_way' | 'round_trip';
+      userLat?: number;
+      userLng?: number;
+      radiusKm?: number;
+    }
+  ) => {
+    const res = await api.post('/courses/recommend', {
+      level,
+      preferredDistance,
+      ...options,
+    });
     return res.data;
   },
 };

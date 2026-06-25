@@ -373,7 +373,7 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
           <Marker coordinate={ghostCoordinate}>
             <View style={styles.ghostMarkerDot}>
               <View style={styles.ghostMarkerInner}>
-                <Ionicons name="ghost" size={12} color="#FFFFFF" />
+                <Ionicons name="person" size={12} color="#FFFFFF" />
               </View>
             </View>
           </Marker>
@@ -411,7 +411,7 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
         {/* Ghost Competitor Progress HUD */}
         {challengeMode && isRunning && (
           <View style={styles.ghostHUD}>
-            <Ionicons name="ghost" size={20} color="#5B5FEF" style={{ marginTop: 2 }} />
+            <Ionicons name="person" size={20} color="#5B5FEF" style={{ marginTop: 2 }} />
             <View style={styles.ghostHUDTextContainer}>
               <Text style={styles.ghostHUDTitle}>{challengerName}님 고스트 페이스 비교</Text>
               <Text style={styles.ghostHUDValue}>

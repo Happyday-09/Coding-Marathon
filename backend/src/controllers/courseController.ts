@@ -6,6 +6,7 @@ import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
 import { Course, ApiResponse } from '../types';
 import { getOpenRouterRecommendation } from '../services/openRouterService';
+import { recommendCoursesWithSlicing } from '../services/courseRecommendationService';
 
 // Convert GeoJSON LineString coordinates to RoutePoint[]
 const parseGeoJsonLineString = (geojson: any): { latitude: number; longitude: number }[] => {
@@ -47,7 +48,7 @@ export const getAllCourses = async (_req: Request, res: Response): Promise<void>
       return;
     }
 
-    const validIds = coursesList.map((c) => c.id);
+    const validIds = (coursesList || []).map((c) => c.id);
     if (validIds.length === 0) {
       res.status(200).json({
         success: true,
@@ -139,6 +140,8 @@ export const getCourseById = async (req: Request, res: Response): Promise<void> 
 // POST /api/courses/recommend
 // AI recommendation based on user level and preferences, calling OpenRouter
 export const recommendCourse = async (req: Request, res: Response): Promise<void> => {
+  return recommendCoursesWithSlicing(req, res);
+
   const { level, preferredDistance } = req.body;
 
   try {
@@ -155,7 +158,7 @@ export const recommendCourse = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const validIds = coursesList.map((c) => c.id);
+    const validIds = (coursesList || []).map((c) => c.id);
     if (validIds.length === 0) {
       res.status(200).json({
         success: true,
@@ -182,7 +185,7 @@ export const recommendCourse = async (req: Request, res: Response): Promise<void
     }
 
     // Map DB items to UI items
-    let recommended: Course[] = coursesData.map((c) => ({
+    let recommended: Course[] = (coursesData || []).map((c) => ({
       id: c.id,
       name: c.name,
       location: `${c.province || ''} ${c.city || ''} ${c.area_name || ''}`.trim(),

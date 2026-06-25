@@ -34,6 +34,19 @@ export interface Course {
   name: string;
   location: string;
   distance: number;       // km
+  totalDistance?: number; // km, full source course distance
+  recommendedDistance?: number; // km, sliced recommendation distance
+  routeStyle?: 'one_way' | 'round_trip';
+  userToStartM?: number;
+  recommendationScore?: number;
+  recommendationReason?: string;
+  segmentSuggestion?: string;
+  segment?: {
+    startDistanceM: number;
+    endDistanceM: number;
+    distanceKm: number;
+    style: 'one_way' | 'round_trip';
+  };
   difficulty: 'easy' | 'medium' | 'hard';
   description: string;
   estimatedTime: number;  // minutes

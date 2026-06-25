@@ -43,29 +43,50 @@ const stripMarkdown = (text: string): string =>
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
+const DISTANCE_OPTIONS = [3, 5, 7, 10];
+const RADIUS_OPTIONS = [5, 10, 20];
+const SAMPLE_LOCATION = {
+  userLat: 37.5665,
+  userLng: 126.978,
+};
+
 export default function CourseListScreen({ user, navigation }: CourseListScreenProps) {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [recommendedCourses, setRecommendedCourses] = useState<Course[]>([]);
   const [aiMessage, setAiMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [recommendationLoading, setRecommendationLoading] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState('전체');
   const [aiExpanded, setAiExpanded] = useState(false);
+  const [selectedDistance, setSelectedDistance] = useState(5);
+  const [selectedRouteStyle, setSelectedRouteStyle] = useState<'one_way' | 'round_trip'>('one_way');
+  const [selectedRadius, setSelectedRadius] = useState(20);
 
   useEffect(() => {
     loadCourses();
-  }, []);
+  }, [selectedDistance, selectedRouteStyle, selectedRadius]);
 
   const loadCourses = async () => {
     try {
+      setRecommendationLoading(true);
       const [allRes, recRes] = await Promise.all([
         courseService.getAll(),
-        courseService.recommend(user.level),
+        courseService.recommend(user.level, selectedDistance, {
+          routeStyle: selectedRouteStyle,
+          radiusKm: selectedRadius,
+          ...SAMPLE_LOCATION,
+        }),
       ]);
       if (allRes.success) setCourses(allRes.data);
-      if (recRes.success) setAiMessage(recRes.data.aiMessage);
+      if (recRes.success) {
+        setRecommendedCourses(recRes.data.recommendations || []);
+        setAiMessage(recRes.data.aiMessage);
+      }
     } catch {
       // ignore
     } finally {
       setLoading(false);
+      setRecommendationLoading(false);
     }
   };
 
@@ -134,11 +155,78 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
     </TouchableOpacity>
   );
 
+  const renderRecommendedCourse = (item: Course, index: number) => (
+    <TouchableOpacity
+      key={item.id}
+      style={styles.recommendCard}
+      activeOpacity={0.8}
+      onPress={() => navigation.navigate('CourseDetail', { courseId: item.id })}
+    >
+      <View style={styles.recommendRank}>
+        <Text style={styles.recommendRankText}>{index + 1}</Text>
+      </View>
+      <View style={styles.recommendContent}>
+        <Text style={styles.recommendName} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.recommendMeta}>
+          {item.distance}km {item.routeStyle === 'round_trip' ? '왕복' : '편도'}
+          {item.totalDistance ? ` · 전체 ${item.totalDistance}km` : ''}
+        </Text>
+        {item.recommendationReason ? (
+          <Text style={styles.recommendReason} numberOfLines={2}>{item.recommendationReason}</Text>
+        ) : null}
+      </View>
+      <Ionicons name="chevron-forward" size={18} color="#B9BBC8" />
+    </TouchableOpacity>
+  );
+
+  const renderOptionChip = (label: string, active: boolean, onPress: () => void) => (
+    <TouchableOpacity
+      key={label}
+      style={[styles.optionChip, active ? styles.activeOptionChip : styles.inactiveOptionChip]}
+      activeOpacity={0.8}
+      onPress={onPress}
+    >
+      <Text style={[styles.optionChipText, active ? styles.activeOptionText : styles.inactiveOptionText]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
   const ListHeader = (
     <>
       <View style={styles.header}>
         <Text style={styles.title}>추천 코스</Text>
         <Text style={styles.subtitle}>AI가 추천하는 러닝 코스</Text>
+      </View>
+
+      <View style={styles.filterPanel}>
+        <View style={styles.filterHeader}>
+          <View>
+            <Text style={styles.filterTitle}>추천 조건</Text>
+            <Text style={styles.filterCaption}>샘플 위치: 서울 시청 기준</Text>
+          </View>
+          {recommendationLoading ? <ActivityIndicator size="small" color="#5B5FEF" /> : null}
+        </View>
+
+        <Text style={styles.filterLabel}>거리</Text>
+        <View style={styles.optionRow}>
+          {DISTANCE_OPTIONS.map((distance) =>
+            renderOptionChip(`${distance}km`, selectedDistance === distance, () => setSelectedDistance(distance))
+          )}
+        </View>
+
+        <Text style={styles.filterLabel}>복귀 스타일</Text>
+        <View style={styles.optionRow}>
+          {renderOptionChip('편도', selectedRouteStyle === 'one_way', () => setSelectedRouteStyle('one_way'))}
+          {renderOptionChip('왕복', selectedRouteStyle === 'round_trip', () => setSelectedRouteStyle('round_trip'))}
+        </View>
+
+        <Text style={styles.filterLabel}>시작점 반경</Text>
+        <View style={styles.optionRow}>
+          {RADIUS_OPTIONS.map((radius) =>
+            renderOptionChip(`${radius}km`, selectedRadius === radius, () => setSelectedRadius(radius))
+          )}
+        </View>
       </View>
 
       {cleanedAiMessage ? (
@@ -157,6 +245,16 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
             <Text style={styles.aiToggle}>{aiExpanded ? '접기 ▲' : '더 보기 ▼'}</Text>
           </View>
         </TouchableOpacity>
+      ) : null}
+
+      {recommendedCourses.length > 0 ? (
+        <View style={styles.recommendSection}>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>AI 추천 결과</Text>
+            <Text style={styles.sectionMeta}>{recommendedCourses.length}개</Text>
+          </View>
+          {recommendedCourses.map(renderRecommendedCourse)}
+        </View>
       ) : null}
     </>
   );
@@ -359,6 +457,134 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 11,
     color: '#8E8EA0',
+  },
+  filterPanel: {
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 10,
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: '#FAFAFC',
+    borderWidth: 1,
+    borderColor: '#EBEBF0',
+  },
+  filterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  filterTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1A1A2E',
+  },
+  filterCaption: {
+    fontSize: 11,
+    color: '#8E8EA0',
+    marginTop: 2,
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4E4E61',
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  optionChip: {
+    minWidth: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  activeOptionChip: {
+    backgroundColor: '#5B5FEF',
+  },
+  inactiveOptionChip: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E2EA',
+  },
+  optionChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  activeOptionText: {
+    color: '#FFFFFF',
+  },
+  inactiveOptionText: {
+    color: '#4E4E61',
+  },
+  recommendSection: {
+    marginHorizontal: 20,
+    marginBottom: 14,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1A1A2E',
+  },
+  sectionMeta: {
+    fontSize: 12,
+    color: '#8E8EA0',
+    fontWeight: '600',
+  },
+  recommendCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EBEBF0',
+    gap: 10,
+  },
+  recommendRank: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#5B5FEF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recommendRankText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  recommendContent: {
+    flex: 1,
+  },
+  recommendName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1A1A2E',
+  },
+  recommendMeta: {
+    fontSize: 12,
+    color: '#5B5FEF',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  recommendReason: {
+    fontSize: 12,
+    color: '#5A5A6E',
+    lineHeight: 17,
+    marginTop: 4,
   },
   tabBarContainer: {
     paddingVertical: 10,
