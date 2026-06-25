@@ -35,75 +35,142 @@ export const dummyUsers: User[] = [
   },
 ];
 
-// ── Hangang (여의도~반포) Route Points ─────
-const hangangRoute: RoutePoint[] = [
-  { latitude: 37.5283, longitude: 126.9340 },
-  { latitude: 37.5270, longitude: 126.9380 },
-  { latitude: 37.5255, longitude: 126.9430 },
-  { latitude: 37.5240, longitude: 126.9490 },
-  { latitude: 37.5225, longitude: 126.9550 },
-  { latitude: 37.5210, longitude: 126.9610 },
-  { latitude: 37.5195, longitude: 126.9670 },
-  { latitude: 37.5180, longitude: 126.9730 },
-  { latitude: 37.5165, longitude: 126.9790 },
-  { latitude: 37.5150, longitude: 126.9850 },
-];
+// ── Curved Route Generators ─────────────────
+const generateHangangRoute = (): RoutePoint[] => {
+  return [
+    { latitude: 37.5270, longitude: 126.9340 }, // Yeouido Han River Park west start
+    { latitude: 37.5273, longitude: 126.9380 }, // Under Mapo Bridge south end
+    { latitude: 37.5268, longitude: 126.9415 }, // Multi-plaza east
+    { latitude: 37.5255, longitude: 126.9448 }, // Under Wonhyo Bridge south end
+    { latitude: 37.5222, longitude: 126.9505 }, // South of bend near 63 building
+    { latitude: 37.5190, longitude: 126.9535 }, // Under Hangang Railway Bridge south end
+    { latitude: 37.5173, longitude: 126.9570 }, // Nodeul Island south bank water trail
+    { latitude: 37.5152, longitude: 126.9608 }, // Heukseok-dong river trail approach
+    { latitude: 37.5118, longitude: 126.9655 }, // Under Hangang Bridge south end
+    { latitude: 37.5098, longitude: 126.9715 }, // Heukseok shoreline trail
+    { latitude: 37.5085, longitude: 126.9760 }, // Heukseok shoreline trail E
+    { latitude: 37.5085, longitude: 126.9800 }, // Banpo Hangang Park west trail
+    { latitude: 37.5098, longitude: 126.9840 }, // Banpo Hangang Park center-west
+    { latitude: 37.5115, longitude: 126.9880 }, // Banpo Hangang Park center
+    { latitude: 37.5135, longitude: 126.9920 }, // Some Sevit area
+    { latitude: 37.5145, longitude: 126.9960 }, // Banpo Bridge South end
+  ];
+};
 
-// ── 올림픽공원 Route Points ─────────────────
-const olympicParkRoute: RoutePoint[] = [
-  { latitude: 37.5202, longitude: 127.1212 },
-  { latitude: 37.5215, longitude: 127.1235 },
-  { latitude: 37.5230, longitude: 127.1260 },
-  { latitude: 37.5240, longitude: 127.1290 },
-  { latitude: 37.5235, longitude: 127.1320 },
-  { latitude: 37.5220, longitude: 127.1340 },
-  { latitude: 37.5205, longitude: 127.1330 },
-  { latitude: 37.5195, longitude: 127.1300 },
-  { latitude: 37.5190, longitude: 127.1260 },
-  { latitude: 37.5202, longitude: 127.1212 },
-];
+const generateOlympicParkRoute = (): RoutePoint[] => {
+  return [
+    { latitude: 37.5205, longitude: 127.1214 },
+    { latitude: 37.5218, longitude: 127.1235 },
+    { latitude: 37.5235, longitude: 127.1255 },
+    { latitude: 37.5245, longitude: 127.1285 },
+    { latitude: 37.5240, longitude: 127.1320 },
+    { latitude: 37.5228, longitude: 127.1342 },
+    { latitude: 37.5210, longitude: 127.1335 },
+    { latitude: 37.5195, longitude: 127.1310 },
+    { latitude: 37.5190, longitude: 127.1275 },
+    { latitude: 37.5205, longitude: 127.1214 },
+  ];
+};
 
-// ── 남산 Route Points ───────────────────────
-const namsanRoute: RoutePoint[] = [
-  { latitude: 37.5512, longitude: 126.9882 },
-  { latitude: 37.5525, longitude: 126.9900 },
-  { latitude: 37.5540, longitude: 126.9920 },
-  { latitude: 37.5555, longitude: 126.9935 },
-  { latitude: 37.5570, longitude: 126.9930 },
-  { latitude: 37.5580, longitude: 126.9910 },
-  { latitude: 37.5575, longitude: 126.9885 },
-  { latitude: 37.5560, longitude: 126.9870 },
-  { latitude: 37.5540, longitude: 126.9865 },
-  { latitude: 37.5512, longitude: 126.9882 },
-];
+const generateNamsanRoute = (): RoutePoint[] => {
+  return [
+    { latitude: 37.5545, longitude: 126.9885 },
+    { latitude: 37.5552, longitude: 126.9912 },
+    { latitude: 37.5568, longitude: 126.9928 },
+    { latitude: 37.5585, longitude: 126.9922 },
+    { latitude: 37.5592, longitude: 126.9895 },
+    { latitude: 37.5585, longitude: 126.9868 },
+    { latitude: 37.5568, longitude: 126.9852 },
+    { latitude: 37.5552, longitude: 126.9862 },
+    { latitude: 37.5545, longitude: 126.9885 },
+  ];
+};
 
-// ── 서울숲 Route Points ─────────────────────
-const seoulForestRoute: RoutePoint[] = [
-  { latitude: 37.5443, longitude: 127.0374 },
-  { latitude: 37.5455, longitude: 127.0390 },
-  { latitude: 37.5470, longitude: 127.0405 },
-  { latitude: 37.5480, longitude: 127.0425 },
-  { latitude: 37.5475, longitude: 127.0445 },
-  { latitude: 37.5460, longitude: 127.0450 },
-  { latitude: 37.5445, longitude: 127.0440 },
-  { latitude: 37.5435, longitude: 127.0420 },
-  { latitude: 37.5435, longitude: 127.0395 },
-  { latitude: 37.5443, longitude: 127.0374 },
-];
+const generateSeoulForestRoute = (): RoutePoint[] => {
+  return [
+    { latitude: 37.5445, longitude: 127.0375 },
+    { latitude: 37.5458, longitude: 127.0392 },
+    { latitude: 37.5472, longitude: 127.0408 },
+    { latitude: 37.5482, longitude: 127.0428 },
+    { latitude: 37.5478, longitude: 127.0448 },
+    { latitude: 37.5462, longitude: 127.0452 },
+    { latitude: 37.5448, longitude: 127.0442 },
+    { latitude: 37.5438, longitude: 127.0422 },
+    { latitude: 37.5438, longitude: 127.0398 },
+    { latitude: 37.5445, longitude: 127.0375 },
+  ];
+};
 
-// ── 뚝섬 한강공원 Route Points ──────────────
-const ttukseomRoute: RoutePoint[] = [
-  { latitude: 37.5310, longitude: 127.0660 },
-  { latitude: 37.5320, longitude: 127.0690 },
-  { latitude: 37.5325, longitude: 127.0730 },
-  { latitude: 37.5330, longitude: 127.0770 },
-  { latitude: 37.5335, longitude: 127.0810 },
-  { latitude: 37.5330, longitude: 127.0850 },
-  { latitude: 37.5320, longitude: 127.0870 },
-  { latitude: 37.5310, longitude: 127.0850 },
-  { latitude: 37.5305, longitude: 127.0810 },
-  { latitude: 37.5310, longitude: 127.0660 },
-];
+const generateTtukseomRoute = (): RoutePoint[] => {
+  return [
+    { latitude: 37.5315, longitude: 127.0600 }, // West start near Yeongdong Bridge
+    { latitude: 37.5305, longitude: 127.0665 }, // Ttukseom Park waterfront plaza
+    { latitude: 37.5303, longitude: 127.0715 }, // Shoreline running trail
+    { latitude: 37.5308, longitude: 127.0765 }, // Waterfront trail
+    { latitude: 37.5312, longitude: 127.0815 }, // Waterfront trail E
+    { latitude: 37.5315, longitude: 127.0865 }, // Jamsil Bridge north end approach
+    { latitude: 37.5320, longitude: 127.0890 }, // East turnaround point
+    { latitude: 37.5328, longitude: 127.0865 }, // Inner park return path
+    { latitude: 37.5325, longitude: 127.0815 }, // Inner park path
+    { latitude: 37.5320, longitude: 127.0765 }, // Inner park road
+    { latitude: 37.5315, longitude: 127.0715 }, // Near playground
+    { latitude: 37.5322, longitude: 127.0665 }, // Rock climbing wall
+    { latitude: 37.5315, longitude: 127.0600 }, // Back to start
+  ];
+};
+
+const generateSeokchonRoute = (): RoutePoint[] => {
+  return [
+    // West Lake Loop (counter-clockwise)
+    { latitude: 37.5097, longitude: 127.1026 }, // Near bridge JCT
+    { latitude: 37.5101, longitude: 127.1022 },
+    { latitude: 37.5105, longitude: 127.1017 },
+    { latitude: 37.5109, longitude: 127.1012 },
+    { latitude: 37.5112, longitude: 127.1005 }, // North shore
+    { latitude: 37.5114, longitude: 127.0998 },
+    { latitude: 37.5113, longitude: 127.0990 },
+    { latitude: 37.5110, longitude: 127.0982 }, // Northwest shore
+    { latitude: 37.5106, longitude: 127.0975 },
+    { latitude: 37.5100, longitude: 127.0971 }, // West shore
+    { latitude: 37.5093, longitude: 127.0970 }, // Southwest shore
+    { latitude: 37.5087, longitude: 127.0974 },
+    { latitude: 37.5083, longitude: 127.0981 }, // South shore
+    { latitude: 37.5082, longitude: 127.0990 },
+    { latitude: 37.5083, longitude: 127.1000 },
+    { latitude: 37.5085, longitude: 127.1008 },
+    { latitude: 37.5088, longitude: 127.1016 },
+    { latitude: 37.5092, longitude: 127.1023 }, // Back to underpass area
+    
+    // Crossing under Songpa-daero bridge
+    { latitude: 37.5095, longitude: 127.1027 },
+    { latitude: 37.5096, longitude: 127.1032 },
+    
+    // East Lake Loop (counter-clockwise)
+    { latitude: 37.5097, longitude: 127.1039 }, // South-west of East Lake
+    { latitude: 37.5100, longitude: 127.1048 }, // South shore
+    { latitude: 37.5104, longitude: 127.1058 },
+    { latitude: 37.5109, longitude: 127.1068 },
+    { latitude: 37.5113, longitude: 127.1074 }, // Southeast shore
+    { latitude: 37.5118, longitude: 127.1078 },
+    { latitude: 37.5123, longitude: 127.1077 }, // East shore
+    { latitude: 37.5127, longitude: 127.1074 },
+    { latitude: 37.5130, longitude: 127.1068 }, // Northeast shore
+    { latitude: 37.5131, longitude: 127.1060 },
+    { latitude: 37.5130, longitude: 127.1052 }, // North shore
+    { latitude: 37.5127, longitude: 127.1044 },
+    { latitude: 37.5122, longitude: 127.1037 }, // Northwest shore
+    { latitude: 37.5115, longitude: 127.1033 }, // Near the underpass
+    { latitude: 37.5104, longitude: 127.1029 }, // Back to start/bridge JCT
+    { latitude: 37.5097, longitude: 127.1026 }
+  ];
+};
+
+const hangangRoute = generateHangangRoute();
+const olympicParkRoute = generateOlympicParkRoute();
+const namsanRoute = generateNamsanRoute();
+const seoulForestRoute = generateSeoulForestRoute();
+const ttukseomRoute = generateTtukseomRoute();
+const seokchonRoute = generateSeokchonRoute();
 
 // ── Runs ───────────────────────────────────
 export const dummyRuns: Run[] = [
@@ -294,15 +361,7 @@ export const dummyCourses: Course[] = [
     difficulty: 'easy',
     description: '석촌호수를 한 바퀴 도는 짧고 평탄한 코스. 벚꽃 시즌에 특히 아름답습니다.',
     estimatedTime: 20,
-    coordinates: [
-      { latitude: 37.5100, longitude: 127.1000 },
-      { latitude: 37.5110, longitude: 127.1020 },
-      { latitude: 37.5120, longitude: 127.1040 },
-      { latitude: 37.5115, longitude: 127.1060 },
-      { latitude: 37.5100, longitude: 127.1050 },
-      { latitude: 37.5090, longitude: 127.1030 },
-      { latitude: 37.5100, longitude: 127.1000 },
-    ],
+    coordinates: seokchonRoute,
     tags: ['호수', '벚꽃', '짧은코스', '초보추천'],
   },
 ];

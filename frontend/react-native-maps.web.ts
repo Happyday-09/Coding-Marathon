@@ -273,9 +273,11 @@ const Polyline = (props: any) => {
     if (!map || !coordinates || coordinates.length === 0) return;
     const kakao = (window as any).kakao;
     
-    const path = coordinates.map(
-      (coord: any) => new kakao.maps.LatLng(coord.latitude, coord.longitude)
-    );
+    const path = coordinates
+      .filter((coord: any) => coord && typeof coord.latitude === 'number' && typeof coord.longitude === 'number' && coord.latitude !== 0 && coord.longitude !== 0)
+      .map(
+        (coord: any) => new kakao.maps.LatLng(coord.latitude, coord.longitude)
+      );
 
     if (!polylineRef.current) {
       const polyline = new kakao.maps.Polyline({

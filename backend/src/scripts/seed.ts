@@ -108,6 +108,7 @@ async function seed() {
         .from('courses')
         .insert({
           source_type: 'public_standard',
+          source_course_id: course.id,
           name: course.name,
           description: course.description,
           province: course.location.split(' ')[0] || '서울',
