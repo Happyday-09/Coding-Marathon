@@ -1,73 +1,56 @@
-// ============================================
-// Auth Controller — Supabase Integrated Login/Register
-// ============================================
-
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { User, ApiResponse } from '../types';
+
+// Anon client for password-based auth (not service role)
+const supabaseAnon = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_ANON_KEY || '',
+  { auth: { persistSession: false } }
+);
 
 // POST /api/auth/login
 export const login = async (req: Request, res: Response): Promise<void> => {
-  const { email } = req.body;
+  const { email, password } = req.body;
 
-  if (!email) {
+  if (!email || !password) {
     res.status(400).json({
       success: false,
-      error: '이메일을 입력해주세요.',
+      error: '이메일과 비밀번호를 입력해주세요.',
     } as ApiResponse<null>);
     return;
   }
 
   try {
-    // Look up auth user via Supabase admin list
-    const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-    if (authError || !authData) {
-      res.status(500).json({
-        success: false,
-        error: '인증 서버 오류가 발생했습니다.',
-      } as ApiResponse<null>);
-      return;
-    }
+    const { data, error } = await supabaseAnon.auth.signInWithPassword({ email, password });
 
-    const authUser = authData.users.find((u) => u.email === email);
-    if (!authUser) {
+    if (error || !data.user) {
       res.status(401).json({
         success: false,
-        error: '등록되지 않은 이메일입니다.',
+        error: '이메일 또는 비밀번호가 올바르지 않습니다.',
       } as ApiResponse<null>);
       return;
     }
 
-    // Fetch user profile from public.profiles
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', authUser.id)
+      .eq('id', data.user.id)
       .single();
 
-    if (profileError || !profile) {
-      res.status(404).json({
-        success: false,
-        error: '프로필 정보를 찾을 수 없습니다.',
-      } as ApiResponse<null>);
-      return;
-    }
-
     const user: User = {
-      id: profile.id,
-      email: authUser.email || '',
-      nickname: profile.nickname || '러너',
-      level: (profile.running_level as 'beginner' | 'intermediate' | 'advanced') || 'beginner',
-      weeklyGoalKm: 20, // default placeholder
-      createdAt: profile.created_at,
+      id: data.user.id,
+      email: data.user.email || '',
+      nickname: profile?.nickname || '러너',
+      level: (profile?.running_level as 'beginner' | 'intermediate' | 'advanced') || 'beginner',
+      weeklyGoalKm: 20,
+      createdAt: profile?.created_at || data.user.created_at,
     };
 
     res.status(200).json({
       success: true,
-      data: {
-        user,
-        token: `token-${user.id}`,
-      },
+      data: { user, token: data.session?.access_token || `token-${user.id}` },
       message: '로그인 성공!',
     } as ApiResponse<{ user: User; token: string }>);
   } catch (error) {
@@ -80,49 +63,46 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
 // POST /api/auth/register
 export const register = async (req: Request, res: Response): Promise<void> => {
-  const { email, nickname, level } = req.body;
+  const { email, password, nickname, level } = req.body;
 
-  if (!email || !nickname) {
+  if (!email || !password || !nickname) {
     res.status(400).json({
       success: false,
-      error: '이메일과 닉네임을 입력해주세요.',
+      error: '이메일, 비밀번호, 닉네임을 모두 입력해주세요.',
+    } as ApiResponse<null>);
+    return;
+  }
+
+  if (password.length < 6) {
+    res.status(400).json({
+      success: false,
+      error: '비밀번호는 6자 이상이어야 합니다.',
     } as ApiResponse<null>);
     return;
   }
 
   try {
-    // Check if email already registered
-    const { data: authData } = await supabase.auth.admin.listUsers();
-    const existing = authData?.users.find((u) => u.email === email);
-    if (existing) {
-      res.status(409).json({
-        success: false,
-        error: '이미 등록된 이메일입니다.',
-      } as ApiResponse<null>);
-      return;
-    }
-
-    // Create auth user
     const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
       email,
-      password: 'password123', // default test password
+      password,
       email_confirm: true,
       user_metadata: { nickname },
     });
 
     if (createError || !newUser.user) {
-      res.status(500).json({
+      const isDuplicate = createError?.message?.includes('already');
+      res.status(isDuplicate ? 409 : 500).json({
         success: false,
-        error: '사용자 생성에 실패했습니다.',
+        error: isDuplicate ? '이미 등록된 이메일입니다.' : '사용자 생성에 실패했습니다.',
       } as ApiResponse<null>);
       return;
     }
 
-    // Update profile with level (profile was automatically created by trigger)
-    await supabase
-      .from('profiles')
-      .update({ running_level: level || 'beginner' })
-      .eq('id', newUser.user.id);
+    await supabase.from('profiles').upsert({
+      id: newUser.user.id,
+      nickname,
+      running_level: level || 'beginner',
+    });
 
     const user: User = {
       id: newUser.user.id,
@@ -135,10 +115,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     res.status(201).json({
       success: true,
-      data: {
-        user,
-        token: `token-${user.id}`,
-      },
+      data: { user, token: `token-${user.id}` },
       message: '회원가입 성공!',
     } as ApiResponse<{ user: User; token: string }>);
   } catch (error) {
@@ -186,4 +163,3 @@ export const getUsers = async (_req: Request, res: Response): Promise<void> => {
     } as ApiResponse<null>);
   }
 };
-
