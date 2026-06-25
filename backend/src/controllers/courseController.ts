@@ -37,7 +37,7 @@ export const getAllCourses = async (_req: Request, res: Response): Promise<void>
     const { data: coursesList, error: listError } = await supabase
       .from('courses')
       .select('id')
-      .eq('source_type', 'beagle');
+      .in('source_type', ['beagle', 'public_standard']);
 
     if (listError || !coursesList) {
       res.status(500).json({
@@ -145,7 +145,7 @@ export const recommendCourse = async (req: Request, res: Response): Promise<void
     const { data: coursesList, error: listError } = await supabase
       .from('courses')
       .select('id')
-      .eq('source_type', 'beagle');
+      .in('source_type', ['beagle', 'public_standard']);
 
     if (listError || !coursesList) {
       res.status(500).json({

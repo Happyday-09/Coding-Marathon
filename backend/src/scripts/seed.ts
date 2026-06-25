@@ -52,8 +52,12 @@ async function seed() {
       await supabase.auth.admin.deleteUser(userId).catch(() => {});
     }
 
-    // Delete public standard courses
-    await supabase.from('courses').delete().eq('source_type', 'public_standard');
+    // Delete public standard courses (preserve GPX-imported ones)
+    await supabase
+      .from('courses')
+      .delete()
+      .eq('source_type', 'public_standard')
+      .not('source_course_id', 'like', 'gpx_%');
 
     // ── 2. Seed Users & Profiles ────────────────────────────────
     console.log('👤 Seeding auth users and profiles...');
