@@ -2,7 +2,7 @@
 // 🗺️ Course List Screen — AI Recommended Courses
 // ============================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { User, Course } from '../types';
@@ -37,6 +38,7 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
   const [courses, setCourses] = useState<Course[]>([]);
   const [aiMessage, setAiMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [selectedRegion, setSelectedRegion] = useState('전체');
 
   useEffect(() => {
     loadCourses();
@@ -56,6 +58,29 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
       setLoading(false);
     }
   };
+
+  const provinces = useMemo(() => {
+    const list = courses
+      .map((c) => c.province)
+      .filter((p): p is string => !!p);
+    const unique = Array.from(new Set(list)).sort();
+    return ['전체', ...unique];
+  }, [courses]);
+
+  const regionCounts = useMemo(() => {
+    const counts: Record<string, number> = { 전체: courses.length };
+    courses.forEach((c) => {
+      if (c.province) {
+        counts[c.province] = (counts[c.province] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [courses]);
+
+  const filteredCourses = useMemo(() => {
+    if (selectedRegion === '전체') return courses;
+    return courses.filter((c) => c.province === selectedRegion);
+  }, [courses, selectedRegion]);
 
   const renderCourse = ({ item }: { item: Course }) => (
     <TouchableOpacity
@@ -125,8 +150,45 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
         </View>
       ) : null}
 
+      {/* Regional Categories Tab Bar */}
+      <View style={styles.tabBarContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabBarContent}
+        >
+          {provinces.map((region) => (
+            <TouchableOpacity
+              key={region}
+              style={[
+                styles.regionTab,
+                selectedRegion === region ? styles.activeRegionTab : styles.inactiveRegionTab,
+              ]}
+              activeOpacity={0.8}
+              onPress={() => setSelectedRegion(region)}
+            >
+              <Text
+                style={[
+                  styles.regionTabText,
+                  selectedRegion === region ? styles.activeRegionTabText : styles.inactiveRegionTabText,
+                ]}
+              >
+                {region}
+                <Text
+                  style={
+                    selectedRegion === region ? styles.activeRegionCountText : styles.inactiveRegionCountText
+                  }
+                >
+                  {` ${regionCounts[region] || 0}`}
+                </Text>
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
       <FlatList
-        data={courses}
+        data={filteredCourses}
         renderItem={renderCourse}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
@@ -263,5 +325,54 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 11,
     color: '#8E8EA0',
+  },
+  tabBarContainer: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5FA',
+    backgroundColor: '#FFFFFF',
+  },
+  tabBarContent: {
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  regionTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  activeRegionTab: {
+    backgroundColor: '#5B5FEF',
+    shadowColor: '#5B5FEF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  inactiveRegionTab: {
+    backgroundColor: '#F5F5FA',
+  },
+  regionTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  activeRegionTabText: {
+    color: '#FFFFFF',
+  },
+  inactiveRegionTabText: {
+    color: '#4E4E61',
+  },
+  activeRegionCountText: {
+    fontSize: 11,
+    color: '#E0E0FF',
+    fontWeight: '500',
+  },
+  inactiveRegionCountText: {
+    fontSize: 11,
+    color: '#8E8EA0',
+    fontWeight: '500',
   },
 });

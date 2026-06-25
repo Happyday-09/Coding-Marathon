@@ -2,7 +2,7 @@
 // 🏠 Home Screen — Dashboard
 // ============================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -50,6 +50,37 @@ export default function HomeScreen({ user, navigation }: HomeScreenProps) {
   const weeklyGoal = user.weeklyGoalKm;
   const weeklyLeft = Math.max(0, weeklyGoal - weeklyDone);
   const weeklyProgress = weeklyGoal > 0 ? Math.min(1, weeklyDone / weeklyGoal) : 0;
+
+  const weeklyChartData = useMemo(() => {
+    const days = ['월', '화', '수', '목', '금', '토', '일'];
+    const distances = [0, 0, 0, 0, 0, 0, 0];
+
+    const now = new Date();
+    const currentDay = now.getDay(); // 0: Sun, 1: Mon
+    const startOfWeek = new Date(now);
+    const diff = now.getDate() - currentDay + (currentDay === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    runs.forEach((run) => {
+      const runDate = new Date(run.createdAt);
+      if (runDate >= startOfWeek && runDate <= now) {
+        let dayIdx = runDate.getDay() - 1; // Mon: 0, Tue: 1... Sun: -1 -> 6
+        if (dayIdx === -1) dayIdx = 6;
+        if (dayIdx >= 0 && dayIdx < 7) {
+          distances[dayIdx] += run.distance;
+        }
+      }
+    });
+
+    const maxDist = Math.max(...distances, 1);
+
+    return days.map((day, idx) => ({
+      day,
+      distance: distances[idx],
+      heightPercent: Math.min(100, Math.round((distances[idx] / maxDist) * 100)),
+    }));
+  }, [runs]);
 
   const formatDuration = (seconds: number): string => {
     const h = Math.floor(seconds / 3600);
@@ -117,6 +148,24 @@ export default function HomeScreen({ user, navigation }: HomeScreenProps) {
             </View>
           </View>
         </TouchableOpacity>
+
+        {/* Weekly Stats Bar Chart */}
+        <View style={styles.chartCard}>
+          <Text style={styles.chartTitle}>이번 주 러닝 분석</Text>
+          <View style={styles.chartContainer}>
+            {weeklyChartData.map((data, idx) => (
+              <View key={idx} style={styles.chartColumn}>
+                <Text style={styles.barValueText}>
+                  {data.distance > 0 ? `${data.distance.toFixed(1)}k` : ''}
+                </Text>
+                <View style={styles.barTrack}>
+                  <View style={[styles.barFill, { height: `${data.heightPercent}%` }]} />
+                </View>
+                <Text style={styles.barLabel}>{data.day}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
 
         {/* Current Jogging Card */}
         {latestRun && (
@@ -388,5 +437,61 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8E8EA0',
     marginTop: 2,
+  },
+  chartCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#EBEBF0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A1A2E',
+    marginBottom: 16,
+  },
+  chartContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    height: 120,
+    paddingTop: 16,
+  },
+  chartColumn: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  barValueText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#5B5FEF',
+    marginBottom: 4,
+    height: 14,
+  },
+  barTrack: {
+    width: 14,
+    height: 70,
+    backgroundColor: '#F5F5FA',
+    borderRadius: 7,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  barFill: {
+    width: '100%',
+    backgroundColor: '#5B5FEF',
+    borderRadius: 7,
+  },
+  barLabel: {
+    fontSize: 12,
+    color: '#8E8EA0',
+    marginTop: 6,
+    fontWeight: '600',
   },
 });

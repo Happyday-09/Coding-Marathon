@@ -81,8 +81,8 @@ export default function CourseDetailScreen({ route, navigation }: CourseDetailSc
 
     const midLat = (minLat + maxLat) / 2;
     const midLng = (minLng + maxLng) / 2;
-    const latDelta = Math.max((maxLat - minLat) * 1.5, 0.012);
-    const lngDelta = Math.max((maxLng - minLng) * 1.5, 0.012);
+    const latDelta = Math.max((maxLat - minLat) * 1.8, 0.012);
+    const lngDelta = Math.max((maxLng - minLng) * 1.8, 0.012);
 
     return {
       latitude: midLat,
@@ -116,9 +116,9 @@ export default function CourseDetailScreen({ route, navigation }: CourseDetailSc
 
   return (
     <View style={styles.container}>
-      {/* Map */}
+      {/* Map — full screen */}
       <MapView
-        style={styles.map}
+        style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
       >
         <Polyline
@@ -148,57 +148,59 @@ export default function CourseDetailScreen({ route, navigation }: CourseDetailSc
         </TouchableOpacity>
       </SafeAreaView>
 
-      {/* Info Card */}
-      <ScrollView style={styles.infoCard} showsVerticalScrollIndicator={false}>
-        <View style={styles.infoContent}>
-          <Text style={styles.courseName}>{course.name}</Text>
+      {/* Info Card — transparent overlay at bottom */}
+      <View style={styles.infoCard}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.infoContent}>
+            <Text style={styles.courseName}>{course.name}</Text>
 
-          <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={16} color="#8E8EA0" />
-            <Text style={styles.locationText}>{course.location}</Text>
-          </View>
-
-          <View style={styles.statsGrid}>
-            <View style={styles.statBox}>
-              <Ionicons name="resize-outline" size={20} color="#5B5FEF" />
-              <Text style={styles.statBoxValue}>{course.distance} km</Text>
-              <Text style={styles.statBoxLabel}>거리</Text>
+            <View style={styles.locationRow}>
+              <Ionicons name="location-outline" size={16} color="#8E8EA0" />
+              <Text style={styles.locationText}>{course.location}</Text>
             </View>
-            <View style={styles.statBox}>
-              <Ionicons name="time-outline" size={20} color="#5B5FEF" />
-              <Text style={styles.statBoxValue}>{course.estimatedTime}분</Text>
-              <Text style={styles.statBoxLabel}>예상 시간</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Ionicons name="trending-up" size={20} color={difficultyColors[course.difficulty]} />
-              <Text style={[styles.statBoxValue, { color: difficultyColors[course.difficulty] }]}>
-                {difficultyLabels[course.difficulty]}
-              </Text>
-              <Text style={styles.statBoxLabel}>난이도</Text>
-            </View>
-          </View>
 
-          <Text style={styles.descriptionTitle}>코스 설명</Text>
-          <Text style={styles.description}>{course.description}</Text>
-
-          <View style={styles.tagRow}>
-            {course.tags.map((tag, idx) => (
-              <View key={idx} style={styles.tag}>
-                <Text style={styles.tagText}>#{tag}</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statBox}>
+                <Ionicons name="resize-outline" size={20} color="#5B5FEF" />
+                <Text style={styles.statBoxValue}>{course.distance} km</Text>
+                <Text style={styles.statBoxLabel}>거리</Text>
               </View>
-            ))}
-          </View>
+              <View style={styles.statBox}>
+                <Ionicons name="time-outline" size={20} color="#5B5FEF" />
+                <Text style={styles.statBoxValue}>{course.estimatedTime}분</Text>
+                <Text style={styles.statBoxLabel}>예상 시간</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Ionicons name="trending-up" size={20} color={difficultyColors[course.difficulty]} />
+                <Text style={[styles.statBoxValue, { color: difficultyColors[course.difficulty] }]}>
+                  {difficultyLabels[course.difficulty]}
+                </Text>
+                <Text style={styles.statBoxLabel}>난이도</Text>
+              </View>
+            </View>
 
-          <TouchableOpacity
-            style={styles.startRunButton}
-            activeOpacity={0.8}
-            onPress={handleStartRun}
-          >
-            <Ionicons name="play" size={20} color="#FFFFFF" />
-            <Text style={styles.startRunText}>이 코스로 러닝 시작</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            <Text style={styles.descriptionTitle}>코스 설명</Text>
+            <Text style={styles.description}>{course.description}</Text>
+
+            <View style={styles.tagRow}>
+              {course.tags.map((tag, idx) => (
+                <View key={idx} style={styles.tag}>
+                  <Text style={styles.tagText}>#{tag}</Text>
+                </View>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={styles.startRunButton}
+              activeOpacity={0.8}
+              onPress={handleStartRun}
+            >
+              <Ionicons name="play" size={20} color="#FFFFFF" />
+              <Text style={styles.startRunText}>이 코스로 러닝 시작</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -252,20 +254,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   infoCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    marginTop: -24,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 10,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    maxHeight: height * 0.5,
+    backgroundColor: 'transparent',
   },
   infoContent: {
     padding: 24,
     paddingBottom: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   courseName: {
     fontSize: 24,

@@ -19,10 +19,14 @@ import { Ionicons } from '@expo/vector-icons';
 
 interface LoginScreenProps {
   onLogin: (email: string) => void;
+  onRegister: (email: string, nickname: string, level: 'beginner' | 'intermediate' | 'advanced') => Promise<void>;
 }
 
-export default function LoginScreen({ onLogin }: LoginScreenProps) {
+export default function LoginScreen({ onLogin, onRegister }: LoginScreenProps) {
   const [email, setEmail] = useState('');
+  const [nickname, setNickname] = useState('');
+  const [level, setLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
+  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -31,11 +35,24 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       return;
     }
     setLoading(true);
-    // Small delay for UX
-    setTimeout(() => {
-      onLogin(email.trim());
+    try {
+      await onLogin(email.trim());
+    } finally {
       setLoading(false);
-    }, 500);
+    }
+  };
+
+  const handleRegister = async () => {
+    if (!email.trim() || !nickname.trim()) {
+      Alert.alert('알림', '이메일과 닉네임을 입력해주세요.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await onRegister(email.trim(), nickname.trim(), level);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDemoLogin = () => {
@@ -64,6 +81,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
           {/* Input Area */}
           <View style={styles.inputArea}>
+            {/* Email Input */}
             <View style={styles.inputContainer}>
               <Ionicons name="mail-outline" size={20} color="#8E8EA0" style={styles.inputIcon} />
               <TextInput
@@ -78,42 +96,97 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               />
             </View>
 
+            {/* Nickname Input & Level Selector for SignUp */}
+            {isSignUp && (
+              <>
+                <View style={styles.inputContainer}>
+                  <Ionicons name="person-outline" size={20} color="#8E8EA0" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="닉네임을 입력하세요"
+                    placeholderTextColor="#B0B0C0"
+                    value={nickname}
+                    onChangeText={setNickname}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+
+                <Text style={styles.sectionLabel}>러닝 레벨</Text>
+                <View style={styles.levelContainer}>
+                  {(['beginner', 'intermediate', 'advanced'] as const).map((lvl) => (
+                    <TouchableOpacity
+                      key={lvl}
+                      style={[
+                        styles.levelChip,
+                        level === lvl ? styles.activeLevelChip : styles.inactiveLevelChip,
+                      ]}
+                      onPress={() => setLevel(lvl)}
+                    >
+                      <Text
+                        style={[
+                          styles.levelChipText,
+                          level === lvl ? styles.activeLevelChipText : styles.inactiveLevelChipText,
+                        ]}
+                      >
+                        {lvl === 'beginner' ? '초보' : lvl === 'intermediate' ? '중급' : '고급'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+
+            {/* Action Button */}
             <TouchableOpacity
               style={[styles.loginButton, loading && styles.loginButtonDisabled]}
-              onPress={handleLogin}
+              onPress={isSignUp ? handleRegister : handleLogin}
               disabled={loading}
               activeOpacity={0.8}
             >
               {loading ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.loginButtonText}>로그인</Text>
+                <Text style={styles.loginButtonText}>{isSignUp ? '회원가입' : '로그인'}</Text>
               )}
             </TouchableOpacity>
 
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>또는</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <TouchableOpacity
-              style={styles.demoButton}
-              onPress={handleDemoLogin}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="flash" size={18} color="#5B5FEF" />
-              <Text style={styles.demoButtonText}>데모 계정으로 시작하기</Text>
+            {/* Toggle Mode */}
+            <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} disabled={loading}>
+              <Text style={styles.toggleText}>
+                {isSignUp ? '이미 계정이 있으신가요? 로그인' : '계정이 없으신가요? 회원가입'}
+              </Text>
             </TouchableOpacity>
+
+            {!isSignUp && (
+              <>
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>또는</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                <TouchableOpacity
+                  style={styles.demoButton}
+                  onPress={handleDemoLogin}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="flash" size={18} color="#5B5FEF" />
+                  <Text style={styles.demoButtonText}>데모 계정으로 시작하기</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
 
           {/* Demo Accounts Info */}
-          <View style={styles.demoInfo}>
-            <Text style={styles.demoInfoTitle}>테스트 계정</Text>
-            <Text style={styles.demoInfoText}>runner@example.com (중급)</Text>
-            <Text style={styles.demoInfoText}>speedy@example.com (고급)</Text>
-            <Text style={styles.demoInfoText}>newbie@example.com (초보)</Text>
-          </View>
+          {!isSignUp && (
+            <View style={styles.demoInfo}>
+              <Text style={styles.demoInfoTitle}>테스트 계정</Text>
+              <Text style={styles.demoInfoText}>runner@example.com (중급)</Text>
+              <Text style={styles.demoInfoText}>speedy@example.com (고급)</Text>
+              <Text style={styles.demoInfoText}>newbie@example.com (초보)</Text>
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -181,6 +254,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1A1A2E',
   },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8E8EA0',
+    marginTop: 4,
+    marginBottom: -4,
+  },
+  levelContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 4,
+  },
+  levelChip: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeLevelChip: {
+    borderColor: '#5B5FEF',
+    backgroundColor: '#F0F0FF',
+  },
+  inactiveLevelChip: {
+    borderColor: '#EBEBF0',
+    backgroundColor: '#FFFFFF',
+  },
+  levelChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  activeLevelChipText: {
+    color: '#5B5FEF',
+  },
+  inactiveLevelChipText: {
+    color: '#8E8EA0',
+  },
   loginButton: {
     backgroundColor: '#5B5FEF',
     borderRadius: 14,
@@ -192,6 +303,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+    marginTop: 6,
   },
   loginButtonDisabled: {
     opacity: 0.7,
@@ -200,6 +312,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
+  },
+  toggleText: {
+    color: '#5B5FEF',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 8,
+    fontSize: 14,
   },
   divider: {
     flexDirection: 'row',

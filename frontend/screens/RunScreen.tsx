@@ -2,7 +2,7 @@
 // 🏃 Run Screen — Running Tracker with Map (Challenge Mode Supported)
 // ============================================
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ interface RunScreenProps {
       targetDistance?: number;
       targetDuration?: number;
       challengerName?: string;
+      courseCoordinates?: RoutePoint[];
     };
   };
   navigation?: any;
@@ -94,6 +95,8 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
     }
   }, [route?.params]);
 
+  const [coachMessage, setCoachMessage] = useState<string | null>(null);
+
   // Ghost Competitor Progress (in km)
   // Challenger runs targetDistance over targetDuration seconds.
   // At any second 'elapsed', ghost competitor distance is: (targetDistance / targetDuration) * elapsed
@@ -105,6 +108,63 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
   // Lead / Lag difference in meters
   const diffDistance = distance - ghostProgress;
   const diffMeters = Math.round(diffDistance * 1000);
+
+  // Calculate Ghost Coordinate along activeRoute based on ratio of distance
+  const ghostCoordinate = useMemo(() => {
+    if (!challengeMode || !targetDistance || activeRoute.length === 0) return activeRoute[0];
+    const ratio = Math.min(1, ghostProgress / targetDistance);
+    const index = Math.min(activeRoute.length - 1, Math.floor(ratio * activeRoute.length));
+    return activeRoute[index] || activeRoute[0];
+  }, [challengeMode, ghostProgress, targetDistance, activeRoute]);
+
+  const playCoachingVoice = (message: string) => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(message);
+      utterance.lang = 'ko-KR';
+      utterance.rate = 1.15; // Slightly faster for dynamic guidance
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  // Start Coaching Guidance
+  useEffect(() => {
+    if (isRunning && elapsed === 0) {
+      const startMsg = challengeMode
+        ? `${challengerName || '친구'}의 기록에 도전을 시작합니다. 화이팅!`
+        : '러닝을 시작합니다. 즐거운 러닝 되세요!';
+      setCoachMessage(startMsg);
+      playCoachingVoice(startMsg);
+
+      const timeout = setTimeout(() => {
+        setCoachMessage(null);
+      }, 5000);
+      return () => clearTimeout(timeout);
+    }
+  }, [isRunning, elapsed]);
+
+  // Periodic Coaching Guidance (every 30 seconds)
+  useEffect(() => {
+    if (isRunning && !isPaused && challengeMode && elapsed > 0 && elapsed % 30 === 0) {
+      let msg = '';
+      if (diffMeters > 50) {
+        msg = `잘하고 계십니다! 상대방보다 ${diffMeters}미터 앞서 달리는 중입니다. 페이스를 유지하세요!`;
+      } else if (diffMeters > 0) {
+        msg = `상대방보다 ${diffMeters}미터 앞서고 있습니다. 조금만 더 힘내세요!`;
+      } else if (diffMeters < -50) {
+        msg = `상대방보다 ${Math.abs(diffMeters)}미터 뒤처지고 있습니다. 속도를 더 내셔야 합니다!`;
+      } else {
+        msg = `상대방보다 ${Math.abs(diffMeters)}미터 뒤처져 있습니다. 포기하지 마세요.`;
+      }
+      setCoachMessage(msg);
+      playCoachingVoice(msg);
+
+      const timeout = setTimeout(() => {
+        setCoachMessage(null);
+      }, 6000);
+      return () => clearTimeout(timeout);
+    }
+  }, [elapsed, isRunning, isPaused, challengeMode]);
 
   useEffect(() => {
     if (isRunning && !isPaused) {
@@ -309,7 +369,26 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
             </View>
           </Marker>
         )}
+        {challengeMode && isRunning && (
+          <Marker coordinate={ghostCoordinate}>
+            <View style={styles.ghostMarkerDot}>
+              <View style={styles.ghostMarkerInner}>
+                <Ionicons name="ghost" size={12} color="#FFFFFF" />
+              </View>
+            </View>
+          </Marker>
+        )}
       </MapView>
+
+      {/* Coaching Overlay Message */}
+      {coachMessage && (
+        <View style={styles.coachCard}>
+          <View style={styles.coachIconBg}>
+            <Ionicons name="sparkles" size={18} color="#FF9500" />
+          </View>
+          <Text style={styles.coachText}>{coachMessage}</Text>
+        </View>
+      )}
 
       {/* Top Bar */}
       <SafeAreaView style={styles.topBar}>
@@ -609,5 +688,60 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  ghostMarkerDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(142, 142, 160, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+  },
+  ghostMarkerInner: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#8E8EA0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+  coachCard: {
+    position: 'absolute',
+    top: 150,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: '#FF9500',
+    shadowColor: '#FF9500',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 5,
+    zIndex: 10,
+  },
+  coachIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFF0D0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coachText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#1A1A2E',
+    fontWeight: '700',
+    lineHeight: 18,
   },
 });

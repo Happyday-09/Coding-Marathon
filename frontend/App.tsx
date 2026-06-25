@@ -38,8 +38,26 @@ export default function App() {
         setUser(fallbackUser);
         Alert.alert('오프라인 모드', '서버에 연결할 수 없어 오프라인 모드로 실행합니다.');
       } else {
-        Alert.alert('오류', '로그인 중 오류가 발생했습니다.');
+        Alert.alert('오류', error.response?.data?.error || '로그인 중 오류가 발생했습니다.');
       }
+    }
+  };
+
+  const handleRegister = async (
+    email: string,
+    nickname: string,
+    level: 'beginner' | 'intermediate' | 'advanced'
+  ) => {
+    try {
+      const res = await authService.register(email, nickname, level);
+      if (res.success) {
+        setUser(res.data.user);
+        Alert.alert('회원가입 완료', `${res.data.user.nickname}님, 가입을 환영합니다!`);
+      } else {
+        Alert.alert('회원가입 실패', res.error || '회원가입에 실패했습니다.');
+      }
+    } catch (error: any) {
+      Alert.alert('오류', error.response?.data?.error || '회원가입 중 오류가 발생했습니다.');
     }
   };
 
@@ -55,7 +73,7 @@ export default function App() {
           <AppNavigator user={user} onLogout={handleLogout} />
         </NavigationContainer>
       ) : (
-        <LoginScreen onLogin={handleLogin} />
+        <LoginScreen onLogin={handleLogin} onRegister={handleRegister} />
       )}
     </>
   );
