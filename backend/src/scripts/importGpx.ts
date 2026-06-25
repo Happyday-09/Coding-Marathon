@@ -52,16 +52,25 @@ async function importGpx() {
 
   const gpxContent = fs.readFileSync(targetPath, 'utf8');
 
-  // Match all trkpt tags
-  const trkptRegex = /<trkpt\s+lat="([\d.-]+)"\s+lon="([\d.-]+)"/g;
+  // Match all trkpt tags and search optionally for elevation <ele>
+  const trkptRegex = /<trkpt\s+lat="([\d.-]+)"\s+lon="([\d.-]+)"(?:>.*?<ele>([\d.-]+)<\/ele>)?/g;
   let match;
-  const coordinates: { latitude: number; longitude: number }[] = [];
+  const coordinates: { latitude: number; longitude: number; elevation?: number }[] = [];
+  const elevations: number[] = [];
 
   while ((match = trkptRegex.exec(gpxContent)) !== null) {
+    const lat = parseFloat(match[1]);
+    const lon = parseFloat(match[2]);
+    const ele = match[3] ? parseFloat(match[3]) : undefined;
+    
     coordinates.push({
-      latitude: parseFloat(match[1]),
-      longitude: parseFloat(match[2]),
+      latitude: lat,
+      longitude: lon,
     });
+
+    if (ele !== undefined) {
+      elevations.push(ele);
+    }
   }
 
   if (coordinates.length < 2) {
@@ -69,7 +78,12 @@ async function importGpx() {
     return;
   }
 
-  console.log(`📍 Parsed ${coordinates.length} points.`);
+  console.log(`📍 Parsed ${coordinates.length} points. (Elevations found: ${elevations.length})`);
+
+  // Calculate Elevation stats
+  const minElevation = elevations.length > 0 ? Math.min(...elevations) : 0;
+  const maxElevation = elevations.length > 0 ? Math.max(...elevations) : 0;
+  const heightDifference = maxElevation - minElevation;
 
   // Calculate total distance
   let totalDistKm = 0;
@@ -81,7 +95,9 @@ async function importGpx() {
 
   const distanceFormatted = Math.round(totalDistKm * 100) / 100;
   const distanceMeters = Math.round(totalDistKm * 1000);
+  const avgSlopePercent = distanceMeters > 0 ? Math.round((heightDifference / distanceMeters) * 100 * 10) / 10 : 0;
   console.log(`📏 Calculated Course Distance: ${distanceFormatted} km (${distanceMeters} m)`);
+  console.log(`🏔️ Elevation: Min ${minElevation}m, Max ${maxElevation}m, Slope ${avgSlopePercent}%`);
 
   // Setup Course Metadata
   const courseData = {
@@ -120,6 +136,9 @@ async function importGpx() {
     end_point: coordToPointWKT(coordinates[coordinates.length - 1]),
     visibility: 'public',
     quality_status: 'valid',
+    min_elevation_m: minElevation,
+    max_elevation_m: maxElevation,
+    avg_slope_percent: avgSlopePercent,
   };
 
   // 0. Clean old imported record to avoid unique constraints violation

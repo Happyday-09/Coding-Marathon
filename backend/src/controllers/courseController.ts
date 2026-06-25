@@ -70,19 +70,33 @@ export const getAllCourses = async (_req: Request, res: Response): Promise<void>
       return;
     }
 
-    const courses: Course[] = coursesData.map((c) => ({
-      id: c.id,
-      name: c.name,
-      location: `${c.province || ''} ${c.city || ''} ${c.area_name || ''}`.trim(),
-      distance: c.distance_km,
-      difficulty: mapDbDifficultyToUi(c.difficulty),
-      description: c.description || '',
-      estimatedTime: Math.round(c.estimated_time_sec / 60),
-      coordinates: parseGeoJsonLineString(c.route_geojson),
-      tags: c.tags || [],
-      province: c.province || '',
-      city: c.city || '',
-    }));
+    // Query elevation stats directly from courses table
+    const { data: rawElevationList } = await supabase
+      .from('courses')
+      .select('id, min_elevation_m, max_elevation_m, avg_slope_percent')
+      .in('id', validIds);
+
+    const elevationMap = new Map((rawElevationList || []).map((r) => [r.id, r]));
+
+    const courses: Course[] = coursesData.map((c) => {
+      const elev = elevationMap.get(c.id);
+      return {
+        id: c.id,
+        name: c.name,
+        location: `${c.province || ''} ${c.city || ''} ${c.area_name || ''}`.trim(),
+        distance: c.distance_km,
+        difficulty: mapDbDifficultyToUi(c.difficulty),
+        description: c.description || '',
+        estimatedTime: Math.round(c.estimated_time_sec / 60),
+        coordinates: parseGeoJsonLineString(c.route_geojson),
+        tags: c.tags || [],
+        province: c.province || '',
+        city: c.city || '',
+        minElevation: elev?.min_elevation_m != null ? Math.round(Number(elev.min_elevation_m)) : undefined,
+        maxElevation: elev?.max_elevation_m != null ? Math.round(Number(elev.max_elevation_m)) : undefined,
+        avgSlope: elev?.avg_slope_percent != null ? Math.round(Number(elev.avg_slope_percent) * 10) / 10 : undefined,
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -101,9 +115,15 @@ export const getCourseById = async (req: Request, res: Response): Promise<void> 
   const { id } = req.params;
 
   try {
-    const { data: c, error } = await supabase.from('course_cards').select('*').eq('id', id).single();
+    const [cardRes, courseRes] = await Promise.all([
+      supabase.from('course_cards').select('*').eq('id', id).single(),
+      supabase.from('courses').select('min_elevation_m, max_elevation_m, avg_slope_percent').eq('id', id).single(),
+    ]);
 
-    if (error || !c) {
+    const c = cardRes.data;
+    const rawCourse = courseRes.data;
+
+    if (cardRes.error || !c) {
       res.status(404).json({
         success: false,
         error: '코스를 찾을 수 없습니다.',
@@ -123,6 +143,9 @@ export const getCourseById = async (req: Request, res: Response): Promise<void> 
       tags: c.tags || [],
       province: c.province || '',
       city: c.city || '',
+      minElevation: rawCourse?.min_elevation_m != null ? Math.round(Number(rawCourse.min_elevation_m)) : undefined,
+      maxElevation: rawCourse?.max_elevation_m != null ? Math.round(Number(rawCourse.max_elevation_m)) : undefined,
+      avgSlope: rawCourse?.avg_slope_percent != null ? Math.round(Number(rawCourse.avg_slope_percent) * 10) / 10 : undefined,
     };
 
     res.status(200).json({
