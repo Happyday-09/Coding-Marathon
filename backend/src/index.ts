@@ -1,5 +1,8 @@
-import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
+// Load environment variables immediately before importing anything else
+dotenv.config();
+
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 
@@ -9,8 +12,6 @@ import runRoutes from './routes/runRoutes';
 import courseRoutes from './routes/courseRoutes';
 import battleRoutes from './routes/battleRoutes';
 
-// Load environment variables
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
