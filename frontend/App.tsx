@@ -101,7 +101,7 @@ export default function App() {
   };
 
   const handleGoogleLogin = async () => {
-    const redirectTo = makeRedirectUri({ scheme: 'runmate', path: 'auth/callback' });
+    const redirectTo = 'exp://192.168.25.105:8081/--/auth/callback';
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',

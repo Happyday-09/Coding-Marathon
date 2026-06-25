@@ -1,7 +1,3 @@
-// ============================================
-// 🗺️ Course List Screen — AI Recommended Courses
-// ============================================
-
 import { useEffect, useState, useMemo } from 'react';
 import {
   View,
@@ -12,6 +8,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { User, Course } from '../types';
@@ -236,7 +234,7 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
         <Text style={styles.filterLabel}>거리</Text>
         <View style={styles.optionRow}>
           {DISTANCE_OPTIONS.map((distance) =>
-            renderOptionChip(`${distance}km`, selectedDistance === distance, () => setSelectedDistance(distance))
+              renderOptionChip(`${distance}km`, selectedDistance === distance, () => setSelectedDistance(distance))
           )}
         </View>
 
@@ -249,7 +247,7 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
         <Text style={styles.filterLabel}>시작점 반경</Text>
         <View style={styles.optionRow}>
           {RADIUS_OPTIONS.map((radius) =>
-            renderOptionChip(`${radius}km`, selectedRadius === radius, () => setSelectedRadius(radius))
+              renderOptionChip(`${radius}km`, selectedRadius === radius, () => setSelectedRadius(radius))
           )}
         </View>
       </View>
@@ -348,9 +346,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 26,
     paddingTop: 16,
     paddingBottom: 8,
   },
@@ -366,7 +365,7 @@ const styles = StyleSheet.create({
   },
   aiCard: {
     flexDirection: 'row',
-    marginHorizontal: 20,
+    marginHorizontal: 26,
     marginTop: 10,
     marginBottom: 10,
     padding: 12,
@@ -400,7 +399,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   listContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 26,
     paddingBottom: 30,
   },
   card: {
@@ -484,7 +483,7 @@ const styles = StyleSheet.create({
     color: '#8E8EA0',
   },
   filterPanel: {
-    marginHorizontal: 20,
+    marginHorizontal: 26,
     marginTop: 10,
     marginBottom: 10,
     padding: 14,
@@ -548,7 +547,7 @@ const styles = StyleSheet.create({
     color: '#4E4E61',
   },
   recommendSection: {
-    marginHorizontal: 20,
+    marginHorizontal: 26,
     marginBottom: 14,
   },
   sectionTitleRow: {
@@ -612,13 +611,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   tabBarContainer: {
-    paddingVertical: 10,
+    paddingTop: 18,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5FA',
     backgroundColor: '#FFFFFF',
   },
   tabBarContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 26,
     gap: 8,
   },
   regionTab: {
