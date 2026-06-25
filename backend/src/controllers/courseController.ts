@@ -1,87 +1,187 @@
 // ============================================
-// Course Controller — Course List + AI Recommend (Dummy)
+// Course Controller — Supabase & AI Recommendations
 // ============================================
 
 import { Request, Response } from 'express';
-import { dummyCourses } from '../data/dummyData';
+import { supabase } from '../config/supabase';
 import { Course, ApiResponse } from '../types';
 import { getOpenRouterRecommendation } from '../services/openRouterService';
 
+// Convert GeoJSON LineString coordinates to RoutePoint[]
+const parseGeoJsonLineString = (geojson: any): { latitude: number; longitude: number }[] => {
+  if (!geojson || !geojson.coordinates) return [];
+  return geojson.coordinates.map((coord: [number, number]) => ({
+    latitude: coord[1],
+    longitude: coord[0],
+  }));
+};
+
+// Map DB difficulty enum ('flat', 'hill', 'trail', 'mixed', 'unknown') to UI difficulty ('easy', 'medium', 'hard')
+const mapDbDifficultyToUi = (diff: string): 'easy' | 'medium' | 'hard' => {
+  if (diff === 'flat') return 'easy';
+  if (diff === 'mixed') return 'medium';
+  if (diff === 'hill' || diff === 'trail') return 'hard';
+  return 'easy';
+};
+
+// Map UI difficulty to DB difficulty search filter
+const mapUiDifficultyToDb = (level: string): string[] => {
+  if (level === 'beginner') return ['flat'];
+  if (level === 'intermediate') return ['flat', 'mixed'];
+  return ['flat', 'mixed', 'hill', 'trail', 'unknown'];
+};
 
 // GET /api/courses
-export const getAllCourses = (_req: Request, res: Response): void => {
-  res.status(200).json({
-    success: true,
-    data: dummyCourses,
-  } as ApiResponse<Course[]>);
+export const getAllCourses = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const { data: coursesData, error } = await supabase.from('course_cards').select('*');
+
+    if (error || !coursesData) {
+      res.status(500).json({
+        success: false,
+        error: '코스 목록을 불러오지 못했습니다.',
+      } as ApiResponse<null>);
+      return;
+    }
+
+    const courses: Course[] = coursesData.map((c) => ({
+      id: c.id,
+      name: c.name,
+      location: `${c.province || ''} ${c.city || ''} ${c.area_name || ''}`.trim(),
+      distance: c.distance_km,
+      difficulty: mapDbDifficultyToUi(c.difficulty),
+      description: c.description || '',
+      estimatedTime: Math.round(c.estimated_time_sec / 60),
+      coordinates: parseGeoJsonLineString(c.route_geojson),
+      tags: c.tags || [],
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: courses,
+    } as ApiResponse<Course[]>);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: '서버 내부 오류가 발생했습니다.',
+    } as ApiResponse<null>);
+  }
 };
 
 // GET /api/courses/:id
-export const getCourseById = (req: Request, res: Response): void => {
+export const getCourseById = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
-  const course = dummyCourses.find((c) => c.id === id);
 
-  if (!course) {
-    res.status(404).json({
+  try {
+    const { data: c, error } = await supabase.from('course_cards').select('*').eq('id', id).single();
+
+    if (error || !c) {
+      res.status(404).json({
+        success: false,
+        error: '코스를 찾을 수 없습니다.',
+      } as ApiResponse<null>);
+      return;
+    }
+
+    const course: Course = {
+      id: c.id,
+      name: c.name,
+      location: `${c.province || ''} ${c.city || ''} ${c.area_name || ''}`.trim(),
+      distance: c.distance_km,
+      difficulty: mapDbDifficultyToUi(c.difficulty),
+      description: c.description || '',
+      estimatedTime: Math.round(c.estimated_time_sec / 60),
+      coordinates: parseGeoJsonLineString(c.route_geojson),
+      tags: c.tags || [],
+    };
+
+    res.status(200).json({
+      success: true,
+      data: course,
+    } as ApiResponse<Course>);
+  } catch (error) {
+    res.status(500).json({
       success: false,
-      error: '코스를 찾을 수 없습니다.',
+      error: '서버 내부 오류가 발생했습니다.',
     } as ApiResponse<null>);
-    return;
   }
-
-  res.status(200).json({
-    success: true,
-    data: course,
-  } as ApiResponse<Course>);
 };
 
 // POST /api/courses/recommend
-// AI recommendation based on user level and preferences, calling OpenRouter if available
+// AI recommendation based on user level and preferences, calling OpenRouter
 export const recommendCourse = async (req: Request, res: Response): Promise<void> => {
-  const { level, preferredDistance, location } = req.body;
+  const { level, preferredDistance } = req.body;
 
-  let recommended = [...dummyCourses];
-
-  // Filter by difficulty based on user level
-  if (level === 'beginner') {
-    recommended = recommended.filter((c) => c.difficulty === 'easy');
-  } else if (level === 'intermediate') {
-    recommended = recommended.filter((c) => c.difficulty !== 'hard');
-  }
-  // advanced gets all courses
-
-  // Sort by distance preference
-  if (preferredDistance) {
-    recommended.sort(
-      (a, b) =>
-        Math.abs(a.distance - preferredDistance) - Math.abs(b.distance - preferredDistance)
-    );
-  }
-
-  // Limit to top 3
-  recommended = recommended.slice(0, 3);
-
-  // Call OpenRouter if key is set
-  let aiMessage = '';
   try {
-    aiMessage = await getOpenRouterRecommendation(level, recommended, preferredDistance);
-  } catch (err) {
-    console.error('OpenRouter recommendation failed:', err);
-  }
+    const { data: coursesData, error } = await supabase.from('course_cards').select('*');
 
-  // Fallback to dummy local message if OpenRouter message is empty
-  if (!aiMessage) {
-    aiMessage = getAiMessage(level, recommended);
-  }
+    if (error || !coursesData) {
+      res.status(500).json({
+        success: false,
+        error: '추천 코스 조회에 실패했습니다.',
+      } as ApiResponse<null>);
+      return;
+    }
 
-  res.status(200).json({
-    success: true,
-    data: {
-      recommendations: recommended,
-      aiMessage,
-    },
-    message: 'AI 추천 완료!',
-  } as ApiResponse<{ recommendations: Course[]; aiMessage: string }>);
+    // Map DB items to UI items
+    let recommended: Course[] = coursesData.map((c) => ({
+      id: c.id,
+      name: c.name,
+      location: `${c.province || ''} ${c.city || ''} ${c.area_name || ''}`.trim(),
+      distance: c.distance_km,
+      difficulty: mapDbDifficultyToUi(c.difficulty),
+      description: c.description || '',
+      estimatedTime: Math.round(c.estimated_time_sec / 60),
+      coordinates: parseGeoJsonLineString(c.route_geojson),
+      tags: c.tags || [],
+    }));
+
+    // Filter by difficulty matching user level
+    const allowedDbDiffs = mapUiDifficultyToDb(level);
+    recommended = recommended.filter((c) =>
+      allowedDbDiffs.includes(
+        c.difficulty === 'easy' ? 'flat' : c.difficulty === 'medium' ? 'mixed' : 'hill'
+      )
+    );
+
+    // Sort by distance preference
+    if (preferredDistance) {
+      recommended.sort(
+        (a, b) =>
+          Math.abs(a.distance - preferredDistance) - Math.abs(b.distance - preferredDistance)
+      );
+    }
+
+    // Limit to top 3
+    recommended = recommended.slice(0, 3);
+
+    // Call OpenRouter if key is set
+    let aiMessage = '';
+    try {
+      aiMessage = await getOpenRouterRecommendation(level, recommended, preferredDistance);
+    } catch (err) {
+      console.error('OpenRouter recommendation failed:', err);
+    }
+
+    // Fallback to dummy local message if OpenRouter message is empty
+    if (!aiMessage) {
+      aiMessage = getAiMessage(level, recommended);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        recommendations: recommended,
+        aiMessage,
+      },
+      message: 'AI 추천 완료!',
+    } as ApiResponse<{ recommendations: Course[]; aiMessage: string }>);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: '서버 내부 오류가 발생했습니다.',
+    } as ApiResponse<null>);
+  }
 };
 
 function getAiMessage(level: string, courses: Course[]): string {
@@ -97,3 +197,4 @@ function getAiMessage(level: string, courses: Course[]): string {
 
   return messages[level] || messages.beginner;
 }
+

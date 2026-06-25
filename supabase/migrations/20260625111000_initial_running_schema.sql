@@ -532,3 +532,41 @@ with check (
       and r.user_id = auth.uid()
   )
 );
+
+-- Create Battles Table (Ghost Challenger Mode)
+create table if not exists public.battles (
+  id uuid primary key default extensions.gen_random_uuid(),
+  challenger_id uuid not null references public.profiles(id) on delete cascade,
+  opponent_id uuid not null references public.profiles(id) on delete cascade,
+  status text not null check (status in ('pending', 'active', 'done')),
+  target_distance numeric(8, 2) not null,   -- Challenger's run distance in km
+  target_duration integer not null,          -- Challenger's run duration in seconds
+  target_pace numeric(6, 2) not null,          -- Challenger's run pace in min/km
+  opponent_progress numeric(8, 2) not null default 0, -- Opponent's distance in km
+  opponent_duration integer,                  -- Opponent's final run duration in seconds
+  winner_id uuid references public.profiles(id) on delete set null,
+  challenger_run_id uuid not null references public.runs(id) on delete cascade,
+  opponent_run_id uuid references public.runs(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+-- Enable RLS for battles
+alter table public.battles enable row level security;
+
+-- Policies for battles
+drop policy if exists "Users can read own battles" on public.battles;
+create policy "Users can read own battles"
+on public.battles for select
+using (auth.uid() = challenger_id or auth.uid() = opponent_id);
+
+drop policy if exists "Users can create own battles" on public.battles;
+create policy "Users can create own battles"
+on public.battles for insert
+with check (auth.uid() = challenger_id);
+
+drop policy if exists "Users can update own battles" on public.battles;
+create policy "Users can update own battles"
+on public.battles for update
+using (auth.uid() = challenger_id or auth.uid() = opponent_id)
+with check (auth.uid() = challenger_id or auth.uid() = opponent_id);
+
