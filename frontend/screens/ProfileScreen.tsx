@@ -12,6 +12,8 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -196,6 +198,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
     overflow: 'hidden' as const,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   scrollContent: {
     paddingBottom: 30,
@@ -204,7 +207,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 26,
     paddingTop: 16,
     paddingBottom: 8,
   },
@@ -245,7 +248,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   progressCard: {
-    marginHorizontal: 20,
+    marginHorizontal: 26,
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 18,
@@ -287,7 +290,7 @@ const styles = StyleSheet.create({
     color: '#8E8EA0',
   },
   menuSection: {
-    marginHorizontal: 20,
+    marginHorizontal: 26,
     gap: 2,
   },
   menuItem: {
@@ -316,7 +319,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 30,
-    marginHorizontal: 20,
+    marginHorizontal: 26,
     paddingVertical: 14,
     gap: 8,
     backgroundColor: '#FFF0F0',

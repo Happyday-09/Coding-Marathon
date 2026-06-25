@@ -2,7 +2,7 @@
 // 🏠 Home Screen — Dashboard
 // ============================================
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import MapView, { Polyline } from 'react-native-maps';
+import { Platform, StatusBar } from 'react-native';
 import { User } from '../types';
 import { supabase } from '../lib/supabase';
 
@@ -39,6 +40,22 @@ export default function HomeScreen({ user, navigation }: HomeScreenProps) {
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [selectedRun, setSelectedRun] = useState<RunRecord | null>(null);
   const [routePoints, setRoutePoints] = useState<{ latitude: number; longitude: number }[]>([]);
+  const detailMapRef = useRef<MapView>(null);
+
+  // Zoom map in detail modal dynamically when loaded
+  useEffect(() => {
+    if (selectedRun && routePoints.length > 0) {
+      const midPoint = routePoints[Math.floor(routePoints.length / 2)];
+      setTimeout(() => {
+        detailMapRef.current?.animateToRegion({
+          latitude: midPoint.latitude,
+          longitude: midPoint.longitude,
+          latitudeDelta: 0.0006,
+          longitudeDelta: 0.0006,
+        }, 800);
+      }, 300);
+    }
+  }, [selectedRun, routePoints]);
 
   useFocusEffect(
     useCallback(() => {
@@ -271,14 +288,15 @@ export default function HomeScreen({ user, navigation }: HomeScreenProps) {
                 {/* Route Map */}
                 {routePoints.length > 1 ? (
                   <MapView
+                    ref={detailMapRef}
                     style={styles.modalMap}
-                    scrollEnabled={false}
-                    zoomEnabled={false}
+                    scrollEnabled={true}
+                    zoomEnabled={true}
                     initialRegion={{
                       latitude: routePoints[Math.floor(routePoints.length / 2)].latitude,
                       longitude: routePoints[Math.floor(routePoints.length / 2)].longitude,
-                      latitudeDelta: 0.01,
-                      longitudeDelta: 0.01,
+                      latitudeDelta: 0.0006,
+                      longitudeDelta: 0.0006,
                     }}
                   >
                     <Polyline coordinates={routePoints} strokeColor="#5B5FEF" strokeWidth={4} />
@@ -356,8 +374,13 @@ export default function HomeScreen({ user, navigation }: HomeScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF', overflow: 'hidden' as const },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 30 },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#FFFFFF', 
+    overflow: 'hidden' as const,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  scrollContent: { paddingHorizontal: 26, paddingBottom: 30 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -495,14 +518,14 @@ const styles = StyleSheet.create({
   modalDetailValue: { fontSize: 14, fontWeight: '600', color: '#1A1A2E' },
   modalMap: {
     width: '100%',
-    height: 200,
+    height: 300,
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 20,
   },
   modalMapEmpty: {
     width: '100%',
-    height: 120,
+    height: 160,
     borderRadius: 16,
     backgroundColor: '#F5F5FA',
     alignItems: 'center',

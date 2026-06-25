@@ -14,6 +14,7 @@ import {
   Platform,
   Modal,
   ScrollView,
+  StatusBar,
 } from 'react-native';
 import MapView, { Polyline, Marker } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
@@ -75,6 +76,29 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
   const mapRef = useRef<MapView>(null);
+  const summaryMapRef = useRef<MapView>(null);
+
+  // Animate summary map to zoom in on modal load
+  useEffect(() => {
+    if (showSummary) {
+      const lat = trackedRoute.length > 0
+        ? trackedRoute[Math.floor(trackedRoute.length / 2)].latitude
+        : (currentLocation?.latitude ?? 37.5665);
+      const lng = trackedRoute.length > 0
+        ? trackedRoute[Math.floor(trackedRoute.length / 2)].longitude
+        : (currentLocation?.longitude ?? 126.978);
+
+      // Give a tiny timeout for modal rendering to complete before running animation
+      setTimeout(() => {
+        summaryMapRef.current?.animateToRegion({
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: 0.0006,
+          longitudeDelta: 0.0006,
+        }, 800);
+      }, 300);
+    }
+  }, [showSummary, trackedRoute, currentLocation]);
 
   // Request GPS permission on mount
   useEffect(() => {
@@ -657,19 +681,29 @@ export default function RunScreen({ user, route, navigation }: RunScreenProps) {
 
             <ScrollView showsVerticalScrollIndicator={false} style={styles.modalBody}>
               {/* Route Map */}
-              {trackedRoute.length > 1 ? (
+              {trackedRoute.length > 0 || currentLocation ? (
                 <MapView
+                  ref={summaryMapRef}
                   style={styles.summaryMap}
-                  scrollEnabled={false}
-                  zoomEnabled={false}
+                  scrollEnabled={true}
+                  zoomEnabled={true}
                   initialRegion={{
-                    latitude: trackedRoute[Math.floor(trackedRoute.length / 2)].latitude,
-                    longitude: trackedRoute[Math.floor(trackedRoute.length / 2)].longitude,
-                    latitudeDelta: 0.008,
-                    longitudeDelta: 0.008,
+                    latitude: trackedRoute.length > 0 
+                      ? trackedRoute[Math.floor(trackedRoute.length / 2)].latitude 
+                      : (currentLocation?.latitude ?? 37.5665),
+                    longitude: trackedRoute.length > 0 
+                      ? trackedRoute[Math.floor(trackedRoute.length / 2)].longitude 
+                      : (currentLocation?.longitude ?? 126.978),
+                    latitudeDelta: 0.0006,
+                    longitudeDelta: 0.0006,
                   }}
                 >
-                  <Polyline coordinates={trackedRoute} strokeColor="#5B5FEF" strokeWidth={5} />
+                  {trackedRoute.length > 1 && (
+                    <Polyline coordinates={trackedRoute} strokeColor="#5B5FEF" strokeWidth={5} />
+                  )}
+                  {(trackedRoute.length === 1 || (trackedRoute.length === 0 && currentLocation)) && (
+                    <Marker coordinate={trackedRoute[0] ?? currentLocation!} />
+                  )}
                 </MapView>
               ) : (
                 <View style={styles.summaryMapEmpty}>
@@ -770,8 +804,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingHorizontal: 26,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 12 : 12,
     paddingBottom: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.85)',
   },
@@ -1044,14 +1078,14 @@ const styles = StyleSheet.create({
   },
   summaryMap: {
     width: '100%',
-    height: 200,
+    height: 300,
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 16,
   },
   summaryMapEmpty: {
     width: '100%',
-    height: 100,
+    height: 150,
     borderRadius: 16,
     backgroundColor: '#F5F5FA',
     alignItems: 'center',

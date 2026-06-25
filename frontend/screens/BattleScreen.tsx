@@ -14,6 +14,8 @@ import {
   Alert,
   Modal,
   ScrollView,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { User, Battle, Run } from '../types';
@@ -473,12 +475,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 26,
     paddingTop: 16,
     paddingBottom: 12,
   },
@@ -506,7 +509,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   listContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 26,
     paddingBottom: 30,
   },
   card: {
