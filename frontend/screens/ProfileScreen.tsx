@@ -94,10 +94,10 @@ export default function ProfileScreen({ user, onLogout }: ProfileScreenProps) {
       onPress: () => navigation.navigate('PersonalParameters', { userId: user.id }),
     },
     {
-      icon: 'trophy-outline' as const,
-      label: 'Achievements',
+      icon: 'sparkles-outline' as const,
+      label: 'AI 러닝 코치',
       color: '#FF9500',
-      onPress: () => Alert.alert('준비 중', '업적 기능은 곧 추가됩니다!'),
+      onPress: () => navigation.navigate('AIFeedback', { userId: user.id, nickname: user.nickname }),
     },
     {
       icon: 'settings-outline' as const,

@@ -19,6 +19,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import PersonalParametersScreen from '../screens/PersonalParametersScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import RunHistoryScreen from '../screens/RunHistoryScreen';
+import AIFeedbackScreen from '../screens/AIFeedbackScreen';
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
@@ -110,6 +111,15 @@ export default function AppNavigator({ user, onLogout, reloadUserProfile }: AppN
           <RunHistoryScreen
             {...props}
             userId={(props.route.params as { userId: string }).userId}
+          />
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="AIFeedback">
+        {(props) => (
+          <AIFeedbackScreen
+            {...props}
+            userId={(props.route.params as { userId: string; nickname: string }).userId}
+            nickname={(props.route.params as { userId: string; nickname: string }).nickname}
           />
         )}
       </Stack.Screen>

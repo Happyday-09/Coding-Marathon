@@ -9,6 +9,9 @@ import {
   TextInput,
   Alert,
   Switch,
+  ActivityIndicator,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -357,11 +360,15 @@ export default function PersonalParametersScreen({ navigation, userId, onSaveSuc
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 26,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F5',
@@ -370,7 +377,7 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: '#1A1A2E', textAlign: 'center' },
   saveBtn: { padding: 4 },
   saveBtnText: { fontSize: 16, fontWeight: '600', color: '#5B5FEF' },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 20 },
+  scrollContent: { paddingHorizontal: 26, paddingTop: 20 },
   section: {
     backgroundColor: '#F8F8FC',
     borderRadius: 16,

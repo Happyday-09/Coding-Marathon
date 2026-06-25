@@ -94,6 +94,7 @@ export type RootStackParamList = {
   PersonalParameters: { userId: string };
   Settings: undefined;
   RunHistory: { userId: string };
+  AIFeedback: { userId: string; nickname: string };
 };
 
 export type RunTabParams = {

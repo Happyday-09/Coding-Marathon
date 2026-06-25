@@ -50,6 +50,10 @@ export const runService = {
     const res = await api.post('/runs', runData);
     return res.data;
   },
+  getAIFeedback: async (userId: string): Promise<{ success: boolean; data: { feedback: any; stats: any } }> => {
+    const res = await api.get(`/runs/${userId}/ai-feedback`);
+    return res.data;
+  },
 };
 
 // ── Courses ─────────────────────────────────
