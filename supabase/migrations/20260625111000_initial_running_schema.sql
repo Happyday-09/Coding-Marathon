@@ -95,6 +95,8 @@ create table if not exists public.course_points (
   lng double precision not null check (lng between 124 and 132),
   lat double precision not null check (lat between 33 and 39),
   elevation_m numeric(8, 2),
+  segment_distance_m numeric(10, 2) not null default 0 check (segment_distance_m >= 0),
+  distance_from_start_m numeric(10, 2) not null default 0 check (distance_from_start_m >= 0),
   recorded_at timestamptz,
   source_point_id text,
   point extensions.geography(Point, 4326) generated always as (
@@ -167,6 +169,8 @@ create table if not exists public.run_points (
   lng double precision not null check (lng between 124 and 132),
   lat double precision not null check (lat between 33 and 39),
   elevation_m numeric(8, 2),
+  segment_distance_m numeric(10, 2) not null default 0 check (segment_distance_m >= 0),
+  distance_from_start_m numeric(10, 2) not null default 0 check (distance_from_start_m >= 0),
   recorded_at timestamptz,
   point extensions.geography(Point, 4326) generated always as (
     extensions.ST_SetSRID(extensions.ST_MakePoint(lng, lat), 4326)::extensions.geography
