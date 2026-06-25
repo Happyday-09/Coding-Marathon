@@ -54,6 +54,9 @@ export interface Course {
   tags: string[];
   province?: string;
   city?: string;
+  minElevation?: number;
+  maxElevation?: number;
+  avgSlope?: number;
 }
 
 export interface Battle {

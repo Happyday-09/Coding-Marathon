@@ -222,6 +222,25 @@ export default function CourseDetailScreen({ route, navigation }: CourseDetailSc
               </View>
             </View>
 
+            {/* Elevation & Slope Stats */}
+            <View style={styles.elevationGrid}>
+              <View style={styles.elevationBox}>
+                <Ionicons name="arrow-down-outline" size={14} color="#8E8EA0" />
+                <Text style={styles.elevationLabel}>최저 고도:</Text>
+                <Text style={styles.elevationValue}>{course.minElevation != null ? `${course.minElevation}m` : '-'}</Text>
+              </View>
+              <View style={styles.elevationBox}>
+                <Ionicons name="arrow-up-outline" size={14} color="#8E8EA0" />
+                <Text style={styles.elevationLabel}>최고 고도:</Text>
+                <Text style={styles.elevationValue}>{course.maxElevation != null ? `${course.maxElevation}m` : '-'}</Text>
+              </View>
+              <View style={styles.elevationBox}>
+                <Ionicons name="analytics-outline" size={14} color="#8E8EA0" />
+                <Text style={styles.elevationLabel}>평균 경사:</Text>
+                <Text style={styles.elevationValue}>{course.avgSlope != null ? `${course.avgSlope}%` : '-'}</Text>
+              </View>
+            </View>
+
             <Text style={styles.descriptionTitle}>코스 설명</Text>
             <Text style={styles.description}>{course.description}</Text>
 
@@ -401,5 +420,33 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  elevationGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 20,
+    backgroundColor: '#FAFAFC',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#EBEBF0',
+  },
+  elevationBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  elevationLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8E8EA0',
+  },
+  elevationValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1A1A2E',
   },
 });
