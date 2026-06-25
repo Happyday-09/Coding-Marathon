@@ -43,8 +43,8 @@
 ### Frontend (React Native + Expo)
 
 ```bash
-npx create-expo-app running-app --template blank-typescript
-cd running-app
+npx create-expo-app frontend --template blank-typescript
+cd frontend
 
 npx expo install expo-location          # GPS 트래킹
 npx expo install expo-task-manager      # 백그라운드 위치
@@ -59,7 +59,7 @@ npm install axios                       # API 통신
 ### Backend (Node.js + Express)
 
 ```bash
-mkdir running-app-server && cd running-app-server
+mkdir backend && cd backend
 npm init -y
 
 npm install express
@@ -149,7 +149,7 @@ npm install -D typescript ts-node nodemon
   - 로그인 / 회원가입
 
 ✅ 2순위 (핵심 차별점)
-  - AI 코스 추천 (Claude API) ← 발표 임팩트 최강
+  - AI 코스 추천 (Claude API)
 
 🔺 3순위 (시간 되면)
   - 친구 대결 UI
