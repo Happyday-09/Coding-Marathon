@@ -2,7 +2,7 @@
 // 🗺️ Course Detail Screen — Map + Info
 // ============================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   TouchableOpacity,
   Dimensions,
   ActivityIndicator,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import MapView, { Polyline, Marker } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,6 +46,18 @@ export default function CourseDetailScreen({ route, navigation }: CourseDetailSc
   const [loading, setLoading] = useState(true);
   const [paceMin, setPaceMin] = useState(5);
   const [paceSec, setPaceSec] = useState(30);
+  const mapRef = useRef<MapView>(null);
+
+  const handleMapReady = () => {
+    if (course && course.coordinates && course.coordinates.length > 0) {
+      setTimeout(() => {
+        mapRef.current?.fitToCoordinates(course.coordinates, {
+          edgePadding: { top: 80, right: 60, bottom: 320, left: 60 },
+          animated: true,
+        });
+      }, 300);
+    }
+  };
 
   useEffect(() => {
     loadCourse();
@@ -107,8 +121,8 @@ export default function CourseDetailScreen({ route, navigation }: CourseDetailSc
 
     const midLat = (minLat + maxLat) / 2;
     const midLng = (minLng + maxLng) / 2;
-    const latDelta = Math.max((maxLat - minLat) * 1.8, 0.012);
-    const lngDelta = Math.max((maxLng - minLng) * 1.8, 0.012);
+    const latDelta = Math.max((maxLat - minLat) * 1.5, 0.003);
+    const lngDelta = Math.max((maxLng - minLng) * 1.5, 0.003);
 
     return {
       latitude: midLat,
@@ -144,8 +158,10 @@ export default function CourseDetailScreen({ route, navigation }: CourseDetailSc
     <View style={styles.container}>
       {/* Map — full screen */}
       <MapView
+        ref={mapRef}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
+        onMapReady={handleMapReady}
       >
         <Polyline
           coordinates={course.coordinates}
@@ -243,7 +259,7 @@ const styles = StyleSheet.create({
   },
   backButtonContainer: {
     position: 'absolute',
-    top: 0,
+    top: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 16 : 16,
     left: 16,
   },
   backButton: {
