@@ -8,17 +8,17 @@
 
 ## 1. 최종 확정 스택
 
-| 분류 | 기술 | 선택 이유 |
-|------|------|----------|
-| **Frontend** | React Native + Expo (TypeScript) | 빠른 세팅, Expo Go로 즉시 테스트, JS 기반 |
-| **Backend** | Node.js + Express | 가장 대중적, 자료 풍부, 빠른 개발 |
-| **Database** | Supabase (PostgreSQL) | SQL 기반 강력한 쿼리, Realtime 지원 |
-| **Auth** | Supabase Auth | 소셜 로그인 빠르게 구현 가능 |
-| **AI** | Claude API | 코스 추천 / 퍼스널 코칭 |
-| **지도** | React Native Maps + Kakao Map API | 한국 지도 최적화 |
-| **스타일** | NativeWind (Tailwind RN 버전) | 빠른 UI 개발 |
-| **서버 배포** | Railway 또는 Render | Express 서버 무료 배포 |
-| **앱 배포** | Expo Go | 무박 2일 데모용 |
+| 분류　　　　　| 기술　　　　　　　　　　　　　　　| 선택 이유　　　　　　　　　　　　　　　　 |
+| ---------------| -----------------------------------| -------------------------------------------|
+| **Frontend**　| React Native + Expo (TypeScript)　| 빠른 세팅, Expo Go로 즉시 테스트, JS 기반 |
+| **Backend**　 | Node.js + Express　　　　　　　　 | 가장 대중적, 자료 풍부, 빠른 개발　　　　 |
+| **Database**　| Supabase (PostgreSQL)　　　　　　 | SQL 기반 강력한 쿼리, Realtime 지원　　　 |
+| **Auth**　　　| Supabase Auth　　　　　　　　　　 | 소셜 로그인 빠르게 구현 가능　　　　　　　|
+| **AI**　　　　| Claude API　　　　　　　　　　　　| 코스 추천 / 퍼스널 코칭　　　　　　　　　 |
+| **지도**　　　| React Native Maps + Kakao Map API | 한국 지도 최적화　　　　　　　　　　　　　|
+| **스타일**　　| NativeWind (Tailwind RN 버전)　　 | 빠른 UI 개발　　　　　　　　　　　　　　　|
+| **서버 배포** | Railway 또는 Render　　　　　　　 | Express 서버 무료 배포　　　　　　　　　　|
+| **앱 배포**　 | Expo Go　　　　　　　　　　　　　 | 무박 2일 데모용　　　　　　　　　　　　　 |
 
 ---
 
