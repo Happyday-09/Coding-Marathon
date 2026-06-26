@@ -76,34 +76,23 @@ export async function getOpenRouterRecommendationJson(
         'X-Title': 'Coding Marathon Running App',
       },
       body: JSON.stringify({
-        model: process.env.OPENROUTER_MODEL || 'google/gemini-3.5-flash',
+        model: process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash',
         temperature: 0.3,
+        max_tokens: 600,
         messages: [
           {
             role: 'system',
-            content:
-              'You are a Korean running course recommendation assistant. Pick only from provided candidate IDs. Return valid JSON only. Do not invent courses, coordinates, or distances.',
+            content: 'Korean running course recommender. Return JSON only. Use only provided candidate IDs.',
           },
           {
             role: 'user',
             content: JSON.stringify({
-              user: {
-                level,
-                preferredDistanceKm,
-                routeStyle,
-              },
-              task:
-                'Rank the best 3 courses. Write natural, varied Korean reasons. Each reason must explain how the user\'s level, the course\'s max elevation, and average slope were considered for their safety and running fun. Additionally, you MUST describe the surrounding scenery (e.g. river view, green park, forest path, city skyline, sunset) of the course based on its name and description to make it sound inviting and descriptive. Do NOT copy the template verbatim. Write naturally and differently for each course, making each recommendation feel personalized, warm, and professional. Ensure you mention the specific user level, max elevation (m), and avg slope (%) in a natural sentence structure.',
+              user: { level, preferredDistanceKm, routeStyle },
+              task: 'Pick best 3 courses. For each, write a warm Korean reason (2 sentences) mentioning user level, elevation, slope, and scenery. Make each reason unique.',
               outputSchema: {
-                recommendedCourseIds: ['course-id-1', 'course-id-2', 'course-id-3'],
-                headline: 'Korean one sentence summary',
-                reasons: [
-                  {
-                    courseId: 'course-id',
-                    reason: 'A natural, warm, and professional Korean reason that integrates the user\'s level, max elevation, average slope, and a description of the beautiful surrounding scenery, explaining how it ensures safety and a fun run. Vary the phrasing for each course so they do not sound identical.',
-                    segmentSuggestion: 'Korean segment suggestion',
-                  },
-                ],
+                recommendedCourseIds: ['id1', 'id2', 'id3'],
+                headline: '한 줄 요약 (Korean)',
+                reasons: [{ courseId: 'id', reason: 'Korean reason', segmentSuggestion: 'Korean tip' }],
               },
               candidates: candidatePayload,
             }),
