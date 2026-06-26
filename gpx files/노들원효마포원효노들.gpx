@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="RunSpot (https://runspot.info)" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>노들원효마포원효노들</name>
+    <link href="https://runspot.info/courses/22">
+      <text>RunSpot</text>
+    </link>
+  </metadata>
+  <wpt lat="37.5139981" lon="126.9560015">
+    <name>출발</name>
+  </wpt>
+  <trk>
+    <name>노들원효마포원효노들</name>
+    <type>running</type>
+    <trkseg>
+      <trkpt lat="37.5139981" lon="126.9560015" />
+      <trkpt lat="37.5212512" lon="126.9607401" />
+      <trkpt lat="37.5217873" lon="126.9601285" />
+      <trkpt lat="37.5218724" lon="126.9596994" />
+      <trkpt lat="37.5219717" lon="126.9587302" />
+      <trkpt lat="37.5221589" lon="126.9577754" />
+      <trkpt lat="37.5224056" lon="126.9570029" />
+      <trkpt lat="37.5227885" lon="126.9564235" />
+      <trkpt lat="37.5234693" lon="126.9555187" />
+      <trkpt lat="37.5239883" lon="126.9545746" />
+      <trkpt lat="37.5248562" lon="126.9535804" />
+      <trkpt lat="37.5260900" lon="126.9527829" />
+      <trkpt lat="37.5273323" lon="126.9525468" />
+      <trkpt lat="37.5289801" lon="126.9523215" />
+      <trkpt lat="37.5297941" lon="126.9520891" />
+      <trkpt lat="37.5307470" lon="126.9511163" />
+      <trkpt lat="37.5314078" lon="126.9502151" />
+      <trkpt lat="37.5321083" lon="126.9493282" />
+      <trkpt lat="37.5332172" lon="126.9481122" />
+      <trkpt lat="37.5339319" lon="126.9472039" />
+      <trkpt lat="37.5341814" lon="126.9460559" />
+      <trkpt lat="37.5342268" lon="126.9451690" />
+      <trkpt lat="37.5341928" lon="126.9444931" />
+      <trkpt lat="37.5344991" lon="126.9438064" />
+      <trkpt lat="37.5348791" lon="126.9432127" />
+      <trkpt lat="37.5353697" lon="126.9429195" />
+      <trkpt lat="37.5358461" lon="126.9426620" />
+      <trkpt lat="37.5362460" lon="126.9422758" />
+      <trkpt lat="37.5366288" lon="126.9420934" />
+      <trkpt lat="37.5366799" lon="126.9419646" />
+      <trkpt lat="37.5357554" lon="126.9404125" />
+      <trkpt lat="37.5298565" lon="126.9309926" />
+      <trkpt lat="37.5295672" lon="126.9304883" />
+      <trkpt lat="37.5288525" lon="126.9306922" />
+      <trkpt lat="37.5286057" lon="126.9309604" />
+      <trkpt lat="37.5283335" lon="126.9313574" />
+      <trkpt lat="37.5283165" lon="126.9320655" />
+      <trkpt lat="37.5274429" lon="126.9330776" />
+      <trkpt lat="37.5270685" lon="126.9340110" />
+      <trkpt lat="37.5267707" lon="126.9345367" />
+      <trkpt lat="37.5263878" lon="126.9350517" />
+      <trkpt lat="37.5256731" lon="126.9356596" />
+      <trkpt lat="37.5248052" lon="126.9363570" />
+      <trkpt lat="37.5240082" lon="126.9374549" />
+      <trkpt lat="37.5234437" lon="126.9382560" />
+      <trkpt lat="37.5229502" lon="126.9386423" />
+      <trkpt lat="37.5222978" lon="126.9392753" />
+      <trkpt lat="37.5217901" lon="126.9400477" />
+      <trkpt lat="37.5214753" lon="126.9402945" />
+      <trkpt lat="37.5209931" lon="126.9408953" />
+      <trkpt lat="37.5202641" lon="126.9413781" />
+      <trkpt lat="37.5197507" lon="126.9413424" />
+      <trkpt lat="37.5193366" lon="126.9413817" />
+      <trkpt lat="37.5187154" lon="126.9414783" />
+      <trkpt lat="37.5182133" lon="126.9415927" />
+      <trkpt lat="37.5177793" lon="126.9418287" />
+      <trkpt lat="37.5175893" lon="126.9424510" />
+      <trkpt lat="37.5176914" lon="126.9431591" />
+      <trkpt lat="37.5179041" lon="126.9441247" />
+      <trkpt lat="37.5180374" lon="126.9451046" />
+      <trkpt lat="37.5179297" lon="126.9464707" />
+      <trkpt lat="37.5176517" lon="126.9474792" />
+      <trkpt lat="37.5172574" lon="126.9483805" />
+      <trkpt lat="37.5166021" lon="126.9496858" />
+      <trkpt lat="37.5158731" lon="126.9512415" />
+      <trkpt lat="37.5155299" lon="126.9527113" />
+      <trkpt lat="37.5154051" lon="126.9530296" />
+      <trkpt lat="37.5151923" lon="126.9532764" />
+      <trkpt lat="37.5149001" lon="126.9534051" />
+      <trkpt lat="37.5146704" lon="126.9537914" />
+      <trkpt lat="37.5146278" lon="126.9541454" />
+      <trkpt lat="37.5143470" lon="126.9549179" />
+      <trkpt lat="37.5141853" lon="126.9553578" />
+      <trkpt lat="37.5137598" lon="126.9570136" />
+      <trkpt lat="37.5133485" lon="126.9579935" />
+    </trkseg>
+  </trk>
+</gpx>

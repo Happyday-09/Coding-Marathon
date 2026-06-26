@@ -43,8 +43,8 @@
 ### Frontend (React Native + Expo)
 
 ```bash
-npx create-expo-app running-app --template blank-typescript
-cd running-app
+npx create-expo-app frontend --template blank-typescript
+cd frontend
 
 npx expo install expo-location          # GPS 트래킹
 npx expo install expo-task-manager      # 백그라운드 위치
@@ -59,7 +59,7 @@ npm install axios                       # API 통신
 ### Backend (Node.js + Express)
 
 ```bash
-mkdir running-app-server && cd running-app-server
+mkdir backend && cd backend
 npm init -y
 
 npm install express
@@ -73,45 +73,26 @@ npm install -D typescript ts-node nodemon
 
 ## 4. Supabase DB 테이블 설계
 
-### users (유저)
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | uuid | Primary Key |
-| email | text | 이메일 |
-| nickname | text | 닉네임 |
-| level | text | 초보 / 중급 / 고급 |
-| created_at | timestamp | 가입일 |
+최신 DB 기준은 아래 파일을 우선합니다.
 
-### runs (러닝 기록)
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | uuid | Primary Key |
-| user_id | uuid | FK → users |
-| distance | float | 거리 (km) |
-| duration | int | 시간 (초) |
-| pace | float | 평균 페이스 |
-| route | jsonb | GPS 좌표 배열 |
-| created_at | timestamp | 러닝 날짜 |
+- 설계 문서: `docs/database-schema.md`
+- 초기 마이그레이션: `supabase/migrations/20260625111000_initial_running_schema.sql`
 
-### courses (추천 코스)
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | uuid | Primary Key |
-| name | text | 코스 이름 |
-| location | text | 지역 |
-| distance | float | 거리 (km) |
-| difficulty | text | 난이도 |
-| coordinates | jsonb | 경로 좌표 |
+### 핵심 테이블
 
-### battles (친구 대결)
-| 컬럼 | 타입 | 설명 |
-|------|------|------|
-| id | uuid | Primary Key |
-| challenger_id | uuid | FK → users |
-| opponent_id | uuid | FK → users |
-| status | text | pending / active / done |
-| target_distance | float | 목표 거리 |
-| created_at | timestamp | 대결 생성일 |
+| 테이블 | 용도 |
+|------|------|
+| `profiles` | Supabase Auth 유저의 앱 프로필 |
+| `courses` | 정제 완료된 러닝 코스 메타데이터와 PostGIS LineString |
+| `course_points` | 코스 원본 GPS 포인트 |
+| `course_waypoints` | 코스 중간 웨이포인트/사진 지점 |
+| `course_quality_issues` | 전처리 중 발견한 좌표/거리/품질 문제 |
+| `course_favorites` | 사용자 저장/찜 |
+| `runs` | 사용자가 직접 기록한 러닝 |
+| `run_points` | 사용자 러닝의 원본 GPS 포인트 |
+
+지도 검색은 Supabase PostgreSQL의 PostGIS `geography` 타입을 사용합니다.  
+비글 원본 데이터는 바로 서비스 테이블에 넣지 않고, 전처리 후 `quality_status = 'valid'`인 코스만 앱 화면에 노출합니다.
 
 ---
 
@@ -149,7 +130,7 @@ npm install -D typescript ts-node nodemon
   - 로그인 / 회원가입
 
 ✅ 2순위 (핵심 차별점)
-  - AI 코스 추천 (Claude API) ← 발표 임팩트 최강
+  - AI 코스 추천 (Claude API)
 
 🔺 3순위 (시간 되면)
   - 친구 대결 UI

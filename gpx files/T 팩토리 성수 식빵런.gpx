@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="RunSpot (https://runspot.info)" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>T 팩토리 성수 식빵런</name>
+    <link href="https://runspot.info/courses/20">
+      <text>RunSpot</text>
+    </link>
+  </metadata>
+  <wpt lat="37.5448793" lon="127.0505467">
+    <name>출발</name>
+  </wpt>
+  <trk>
+    <name>T 팩토리 성수 식빵런</name>
+    <type>running</type>
+    <trkseg>
+      <trkpt lat="37.5448793" lon="127.0505467" />
+      <trkpt lat="37.5447857" lon="127.0506969" />
+      <trkpt lat="37.5442626" lon="127.0499620" />
+      <trkpt lat="37.5440457" lon="127.0498440" />
+      <trkpt lat="37.5441137" lon="127.0495865" />
+      <trkpt lat="37.5406131" lon="127.0482051" />
+      <trkpt lat="37.5422550" lon="127.0421702" />
+      <trkpt lat="37.5426123" lon="127.0421058" />
+      <trkpt lat="37.5449686" lon="127.0431787" />
+      <trkpt lat="37.5453004" lon="127.0420200" />
+      <trkpt lat="37.5453344" lon="127.0420629" />
+      <trkpt lat="37.5461170" lon="127.0390373" />
+      <trkpt lat="37.5460915" lon="127.0385009" />
+      <trkpt lat="37.5458958" lon="127.0380503" />
+      <trkpt lat="37.5455045" lon="127.0375460" />
+      <trkpt lat="37.5453174" lon="127.0373958" />
+      <trkpt lat="37.5449771" lon="127.0373529" />
+      <trkpt lat="37.5446369" lon="127.0373636" />
+      <trkpt lat="37.5443817" lon="127.0374602" />
+      <trkpt lat="37.5440584" lon="127.0377177" />
+      <trkpt lat="37.5438968" lon="127.0380288" />
+      <trkpt lat="37.5437437" lon="127.0383614" />
+      <trkpt lat="37.5436671" lon="127.0388228" />
+      <trkpt lat="37.5435650" lon="127.0394343" />
+      <trkpt lat="37.5433694" lon="127.0399171" />
+      <trkpt lat="37.5431907" lon="127.0402819" />
+      <trkpt lat="37.5429951" lon="127.0407647" />
+      <trkpt lat="37.5428675" lon="127.0413440" />
+      <trkpt lat="37.5426803" lon="127.0418698" />
+      <trkpt lat="37.5426378" lon="127.0421380" />
+    </trkseg>
+  </trk>
+</gpx>
