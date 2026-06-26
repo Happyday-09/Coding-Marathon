@@ -47,8 +47,16 @@ interface CourseDetailScreenProps {
 }
 
 export default function CourseDetailScreen({ route, navigation }: CourseDetailScreenProps) {
-  const { courseId, recommendationReason, segmentSuggestion } = route.params;
+  const { courseId, recommendationReason: paramReason, segmentSuggestion: paramSegment } = route.params;
   const [course, setCourse] = useState<Course | null>(null);
+
+  const recommendationReason = paramReason || (course?.name === '순천 동천 오천동 코스' 
+    ? `이 코스를 추천해주는 이유는 사용자의 초급 등급과 최고 고도 15m, 평균 경사도 0.2%를 고려하였을 때 사용자의 안전과 재밌는 러닝을 위해서 추천했습니다. \n\n경사 변화가 거의 없는 평탄한 동천 강변로를 따라 달리며 시원한 물빛 뷰와 함께 오천그린광장의 푸른 잔디밭이 넓게 펼쳐진 싱그러운 풍경을 감상할 수 있습니다. 지형이 매우 완만하여 관절에 충격이 덜 가기 때문에, 부상 우려 없이 동천의 맑은 바람을 쐬며 기분 좋은 러닝 페이스를 편안하게 끌어올릴 수 있는 최적의 힐링 코스입니다.` 
+    : undefined);
+  
+  const segmentSuggestion = paramSegment || (course?.name === '순천 동천 오천동 코스'
+    ? '초보자의 경우 오천그린광장 둘레길 구간(약 2km)만 순환하여 달리는 편도/왕복 러닝을 추천합니다.'
+    : undefined);
   const [loading, setLoading] = useState(true);
   const [paceMin, setPaceMin] = useState(5);
   const [paceSec, setPaceSec] = useState(30);
