@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 
@@ -24,6 +24,10 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
+        // Dismiss the browser session immediately when authenticated to resolve Custom Tabs hang in Android (Mobile only)
+        if (Platform.OS !== 'web') {
+          WebBrowser.dismissBrowser();
+        }
         loadUserProfile(session.user.id, session.user.email || '');
       } else {
         setUser(null);
@@ -34,20 +38,37 @@ export default function App() {
   }, []);
 
   const loadUserProfile = async (userId: string, email: string) => {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    setUser({
-      id: userId,
-      email,
-      nickname: profile?.nickname || email.split('@')[0],
-      level: (profile?.running_level as 'beginner' | 'intermediate' | 'advanced') || 'beginner',
-      weeklyGoalKm: profile?.weekly_goal_km || 20,
-      createdAt: profile?.created_at || new Date().toISOString(),
-    });
+      if (error) {
+        console.warn('[App] Failed to load profile:', error.message);
+      }
+
+      setUser({
+        id: userId,
+        email,
+        nickname: profile?.nickname || email.split('@')[0],
+        level: (profile?.running_level as 'beginner' | 'intermediate' | 'advanced') || 'beginner',
+        weeklyGoalKm: profile?.weekly_goal_km || 20,
+        createdAt: profile?.created_at || new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('[App] loadUserProfile error:', err);
+      // Fallback user object to prevent infinite loading spinner
+      setUser({
+        id: userId,
+        email,
+        nickname: email.split('@')[0],
+        level: 'beginner',
+        weeklyGoalKm: 20,
+        createdAt: new Date().toISOString(),
+      });
+    }
   };
 
   const reloadUserProfile = async () => {
@@ -109,20 +130,29 @@ export default function App() {
 
   const handleGoogleLogin = async () => {
     try {
-      // Generate redirect URI dynamically per platform
-      const redirectTo = makeRedirectUri({ path: 'auth/callback' });
+      const isWeb = Platform.OS === 'web';
+      // Generate redirect URI dynamically: use window origin on Web, Expo deep link scheme on mobile
+      const redirectTo = isWeb 
+        ? window.location.origin 
+        : makeRedirectUri();
       console.log('[Google OAuth] redirectTo =', redirectTo); // ← 터미널/콘솔에서 이 값 확인!
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo,
-          skipBrowserRedirect: true,
+          skipBrowserRedirect: true, // Always skip auto-redirect so we can manually control the single redirect path
         },
       });
 
       if (error || !data.url) {
         Alert.alert('Google 로그인 실패', error?.message || '로그인 URL을 가져올 수 없습니다.');
+        return;
+      }
+
+      if (isWeb && data.url) {
+        // Explicitly redirect the window to ensure the browser navigates to the OAuth URL
+        window.location.href = data.url;
         return;
       }
 
@@ -137,10 +167,18 @@ export default function App() {
           return match ? match[1] : undefined;
         };
 
+        const code = getParam('code');
         const accessToken = getParam('access_token');
         const refreshToken = getParam('refresh_token');
 
-        if (accessToken && refreshToken) {
+        if (code) {
+          // PKCE flow: Exchange authorization code for session
+          const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeErr) {
+            Alert.alert('인증 코드 교환 실패', exchangeErr.message);
+          }
+        } else if (accessToken && refreshToken) {
+          // Implicit flow: Set session directly with tokens
           const { error: sessionErr } = await supabase.auth.setSession({ 
             access_token: accessToken, 
             refresh_token: refreshToken 
@@ -149,7 +187,7 @@ export default function App() {
             Alert.alert('세션 설정 실패', sessionErr.message);
           }
         } else {
-          Alert.alert('인증 오류', '인증 토큰을 찾을 수 없습니다.');
+          Alert.alert('인증 오류', '인증 코드 또는 토큰을 찾을 수 없습니다.');
         }
       } else {
         console.log('[Google OAuth] result:', result.type); // 'cancel' or 'dismiss'

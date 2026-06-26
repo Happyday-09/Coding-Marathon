@@ -76,7 +76,7 @@ export async function getOpenRouterRecommendationJson(
         'X-Title': 'Coding Marathon Running App',
       },
       body: JSON.stringify({
-        model: process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash',
+        model: process.env.OPENROUTER_MODEL || 'google/gemini-3.5-flash',
         temperature: 0.3,
         messages: [
           {
