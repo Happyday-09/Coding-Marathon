@@ -366,6 +366,15 @@ export const recommendCoursesWithSlicing = async (req: Request, res: Response): 
 
   try {
     const rows = await fetchCandidateRows(province, center, radiusKm);
+    const validIds = rows.map((r) => r.id);
+
+    // Fetch elevation details in parallel for candidates
+    const { data: rawElevationList } = await supabase
+      .from('courses')
+      .select('id, min_elevation_m, max_elevation_m, avg_slope_percent')
+      .in('id', validIds);
+
+    const elevationMap = new Map((rawElevationList || []).map((r) => [r.id, r]));
 
     const scored = rows
       .map((row) => {
@@ -378,6 +387,11 @@ export const recommendCoursesWithSlicing = async (req: Request, res: Response): 
           : undefined;
         const score = scoreCourse(row, level, targetKm, routeStyle, userToStartM);
         if (!Number.isFinite(score)) return null;
+
+        const elev = elevationMap.get(row.id);
+        const minElevation = elev?.min_elevation_m != null ? Math.round(Number(elev.min_elevation_m)) : 0;
+        const maxElevation = elev?.max_elevation_m != null ? Math.round(Number(elev.max_elevation_m)) : 0;
+        const avgSlope = elev?.avg_slope_percent != null ? Math.round(Number(elev.avg_slope_percent) * 10) / 10 : 0;
 
         const course: RecommendationCourse = {
           id: row.id,
@@ -417,6 +431,9 @@ export const recommendCoursesWithSlicing = async (req: Request, res: Response): 
           userToStartM,
           score,
           reasonHints: course.tags,
+          minElevation,
+          maxElevation,
+          avgSlope,
         };
 
         return { course, aiCandidate };

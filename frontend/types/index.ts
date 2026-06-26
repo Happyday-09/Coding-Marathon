@@ -90,7 +90,11 @@ export interface RunStats {
 export type RootStackParamList = {
   Login: undefined;
   Main: undefined;
-  CourseDetail: { courseId: string };
+  CourseDetail: { 
+    courseId: string;
+    recommendationReason?: string;
+    segmentSuggestion?: string;
+  };
   PersonalParameters: { userId: string };
   Settings: undefined;
   RunHistory: { userId: string };

@@ -9,6 +9,9 @@ export interface AiRecommendationCandidate {
   userToStartM?: number;
   score: number;
   reasonHints: string[];
+  minElevation?: number;
+  maxElevation?: number;
+  avgSlope?: number;
 }
 
 export interface AiRecommendationResult {
@@ -58,6 +61,9 @@ export async function getOpenRouterRecommendationJson(
     userToStartM: candidate.userToStartM,
     score: Math.round(candidate.score),
     reasonHints: candidate.reasonHints,
+    minElevation: candidate.minElevation,
+    maxElevation: candidate.maxElevation,
+    avgSlope: candidate.avgSlope,
   }));
 
   try {
@@ -87,14 +93,14 @@ export async function getOpenRouterRecommendationJson(
                 routeStyle,
               },
               task:
-                'Rank the best 3 courses. Write concise Korean reasons. For long courses, recommend running only the sliced segment, not the full course.',
+                'Rank the best 3 courses. Write natural, varied Korean reasons. Each reason must explain how the user\'s level, the course\'s max elevation, and average slope were considered for their safety and running fun. Additionally, you MUST describe the surrounding scenery (e.g. river view, green park, forest path, city skyline, sunset) of the course based on its name and description to make it sound inviting and descriptive. Do NOT copy the template verbatim. Write naturally and differently for each course, making each recommendation feel personalized, warm, and professional. Ensure you mention the specific user level, max elevation (m), and avg slope (%) in a natural sentence structure.',
               outputSchema: {
                 recommendedCourseIds: ['course-id-1', 'course-id-2', 'course-id-3'],
                 headline: 'Korean one sentence summary',
                 reasons: [
                   {
                     courseId: 'course-id',
-                    reason: 'Korean reason',
+                    reason: 'A natural, warm, and professional Korean reason that integrates the user\'s level, max elevation, average slope, and a description of the beautiful surrounding scenery, explaining how it ensures safety and a fun run. Vary the phrasing for each course so they do not sound identical.',
                     segmentSuggestion: 'Korean segment suggestion',
                   },
                 ],

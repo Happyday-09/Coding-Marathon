@@ -206,7 +206,11 @@ export default function CourseListScreen({ user, navigation }: CourseListScreenP
       key={item.id}
       style={styles.recommendCard}
       activeOpacity={0.8}
-      onPress={() => navigation.navigate('CourseDetail', { courseId: item.id })}
+      onPress={() => navigation.navigate('CourseDetail', { 
+        courseId: item.id,
+        recommendationReason: item.recommendationReason,
+        segmentSuggestion: item.segmentSuggestion,
+      })}
     >
       <View style={styles.recommendRank}>
         <Text style={styles.recommendRankText}>{index + 1}</Text>

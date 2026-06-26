@@ -36,16 +36,23 @@ const difficultyLabels: Record<string, string> = {
 };
 
 interface CourseDetailScreenProps {
-  route: { params: { courseId: string } };
+  route: { 
+    params: { 
+      courseId: string;
+      recommendationReason?: string;
+      segmentSuggestion?: string;
+    } 
+  };
   navigation: any;
 }
 
 export default function CourseDetailScreen({ route, navigation }: CourseDetailScreenProps) {
-  const { courseId } = route.params;
+  const { courseId, recommendationReason, segmentSuggestion } = route.params;
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [paceMin, setPaceMin] = useState(5);
   const [paceSec, setPaceSec] = useState(30);
+  const [showAiReason, setShowAiReason] = useState(false);
   const mapRef = useRef<MapView>(null);
 
   const handleMapReady = () => {
@@ -240,6 +247,39 @@ export default function CourseDetailScreen({ route, navigation }: CourseDetailSc
                 <Text style={styles.elevationValue}>{course.avgSlope != null ? `${course.avgSlope}%` : '-'}</Text>
               </View>
             </View>
+
+            {/* AI Recommendation Expandable Details */}
+            {!!recommendationReason && (
+              <View style={styles.aiReasonCard}>
+                <TouchableOpacity
+                  style={styles.aiReasonHeader}
+                  activeOpacity={0.7}
+                  onPress={() => setShowAiReason(!showAiReason)}
+                >
+                  <View style={styles.aiReasonTitleRow}>
+                    <Ionicons name="sparkles" size={14} color="#5B5FEF" />
+                    <Text style={styles.aiReasonTitle}>AI 코치의 추천 이유 더보기</Text>
+                  </View>
+                  <Ionicons
+                    name={showAiReason ? "chevron-up" : "chevron-down"}
+                    size={16}
+                    color="#5B5FEF"
+                  />
+                </TouchableOpacity>
+
+                {showAiReason && (
+                  <View style={styles.aiReasonBody}>
+                    <Text style={styles.aiReasonText}>{recommendationReason}</Text>
+                    {!!segmentSuggestion && (
+                      <View style={styles.segmentSuggestionBox}>
+                        <Ionicons name="bulb-outline" size={14} color="#FF9500" />
+                        <Text style={styles.segmentSuggestionText}>{segmentSuggestion}</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
 
             <Text style={styles.descriptionTitle}>코스 설명</Text>
             <Text style={styles.description}>{course.description}</Text>
@@ -448,5 +488,56 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#1A1A2E',
+  },
+  aiReasonCard: {
+    backgroundColor: '#F3F4FE',
+    borderWidth: 1,
+    borderColor: '#E1E4FC',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 18,
+  },
+  aiReasonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  aiReasonTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  aiReasonTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#3F44D1',
+  },
+  aiReasonBody: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E5FD',
+    paddingTop: 10,
+  },
+  aiReasonText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#4E5370',
+  },
+  segmentSuggestionBox: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF9F2',
+    borderWidth: 1,
+    borderColor: '#FFE8CE',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 10,
+    gap: 6,
+  },
+  segmentSuggestionText: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#BA7A29',
+    flex: 1,
+    fontWeight: '500',
   },
 });

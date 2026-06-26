@@ -108,37 +108,55 @@ export default function App() {
   };
 
   const handleGoogleLogin = async () => {
-    // Generate redirect URI dynamically per platform
-    const redirectTo = makeRedirectUri({ path: 'auth/callback' });
-    console.log('[Google OAuth] redirectTo =', redirectTo); // ← 터미널/콘솔에서 이 값 확인!
+    try {
+      // Generate redirect URI dynamically per platform
+      const redirectTo = makeRedirectUri({ path: 'auth/callback' });
+      console.log('[Google OAuth] redirectTo =', redirectTo); // ← 터미널/콘솔에서 이 값 확인!
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo,
-        skipBrowserRedirect: true,
-      },
-    });
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+        },
+      });
 
-    if (error || !data.url) {
-      Alert.alert('Google 로그인 실패', error?.message || '로그인 URL을 가져올 수 없습니다.');
-      return;
-    }
-
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-
-    if (result.type === 'success' && result.url) {
-      const url = new URL(result.url);
-      const accessToken = url.searchParams.get('access_token') ||
-        url.hash.replace('#', '').split('&').find(p => p.startsWith('access_token='))?.split('=')[1];
-      const refreshToken = url.searchParams.get('refresh_token') ||
-        url.hash.replace('#', '').split('&').find(p => p.startsWith('refresh_token='))?.split('=')[1];
-
-      if (accessToken && refreshToken) {
-        await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      if (error || !data.url) {
+        Alert.alert('Google 로그인 실패', error?.message || '로그인 URL을 가져올 수 없습니다.');
+        return;
       }
-    } else {
-      console.log('[Google OAuth] result:', result.type); // 'cancel' or 'dismiss' 이면 redirect 실패
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+      if (result.type === 'success' && result.url) {
+        // Safe regex parsing for URL query/hash parameters to prevent 'Invalid URL' crashes on custom protocols
+        const urlString = result.url;
+        const getParam = (name: string) => {
+          const regex = new RegExp('[#?&]' + name + '=([^&#]*)');
+          const match = urlString.match(regex);
+          return match ? match[1] : undefined;
+        };
+
+        const accessToken = getParam('access_token');
+        const refreshToken = getParam('refresh_token');
+
+        if (accessToken && refreshToken) {
+          const { error: sessionErr } = await supabase.auth.setSession({ 
+            access_token: accessToken, 
+            refresh_token: refreshToken 
+          });
+          if (sessionErr) {
+            Alert.alert('세션 설정 실패', sessionErr.message);
+          }
+        } else {
+          Alert.alert('인증 오류', '인증 토큰을 찾을 수 없습니다.');
+        }
+      } else {
+        console.log('[Google OAuth] result:', result.type); // 'cancel' or 'dismiss'
+      }
+    } catch (err: any) {
+      console.error('[Google OAuth] Unexpected error:', err);
+      Alert.alert('Google 로그인 오류', err?.message || '로그인 중 예기치 않은 오류가 발생했습니다.');
     }
   };
 
