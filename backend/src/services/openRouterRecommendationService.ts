@@ -78,21 +78,33 @@ export async function getOpenRouterRecommendationJson(
       body: JSON.stringify({
         model: process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash',
         temperature: 0.3,
-        max_tokens: 600,
+        max_tokens: 1500,
         messages: [
           {
             role: 'system',
-            content: 'Korean running course recommender. Return JSON only. Use only provided candidate IDs.',
+            content:
+              'You are a Korean running course recommendation assistant. Pick only from provided candidate IDs. Return valid JSON only. Do not invent courses, coordinates, or distances.',
           },
           {
             role: 'user',
             content: JSON.stringify({
-              user: { level, preferredDistanceKm, routeStyle },
-              task: 'Pick best 3 courses. For each, write a warm Korean reason (2 sentences) mentioning user level, elevation, slope, and scenery. Make each reason unique.',
+              user: {
+                level,
+                preferredDistanceKm,
+                routeStyle,
+              },
+              task:
+                'Rank the best 3 courses. Write natural, varied Korean reasons. Each reason must explain how the user\'s level, the course\'s max elevation, and average slope were considered for their safety and running fun. Additionally, you MUST describe the surrounding scenery (e.g. river view, green park, forest path, city skyline, sunset) of the course based on its name and description to make it sound inviting and descriptive. Do NOT copy the template verbatim. Write naturally and differently for each course, making each recommendation feel personalized, warm, and professional. Ensure you mention the specific user level, max elevation (m), and avg slope (%) in a natural sentence structure.',
               outputSchema: {
-                recommendedCourseIds: ['id1', 'id2', 'id3'],
-                headline: '한 줄 요약 (Korean)',
-                reasons: [{ courseId: 'id', reason: 'Korean reason', segmentSuggestion: 'Korean tip' }],
+                recommendedCourseIds: ['course-id-1', 'course-id-2', 'course-id-3'],
+                headline: 'Korean one sentence summary',
+                reasons: [
+                  {
+                    courseId: 'course-id',
+                    reason: 'A natural, warm, and professional Korean reason that integrates the user\'s level, max elevation, average slope, and a description of the beautiful surrounding scenery.',
+                    segmentSuggestion: 'Korean segment suggestion',
+                  },
+                ],
               },
               candidates: candidatePayload,
             }),
@@ -121,6 +133,11 @@ export async function getOpenRouterRecommendationJson(
     const validIds = new Set(candidates.map((candidate) => candidate.id));
     const recommendedCourseIds = (parsed.recommendedCourseIds || []).filter((id) => validIds.has(id));
     const reasons = (parsed.reasons || []).filter((reason) => validIds.has(reason.courseId));
+
+    console.log('[OpenRouter] AI recommendedCourseIds:', parsed.recommendedCourseIds);
+    console.log('[OpenRouter] AI reasons courseIds:', (parsed.reasons || []).map((r) => r.courseId));
+    console.log('[OpenRouter] valid IDs:', [...validIds].slice(0, 5));
+    console.log('[OpenRouter] matched reasons:', reasons.length);
 
     if (recommendedCourseIds.length === 0) return null;
 
